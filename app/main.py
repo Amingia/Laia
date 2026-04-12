@@ -17,42 +17,47 @@ class AppState:
         self.predictions = []
         self.decision = "HOLD"
         self.confianza = 0.5
-        self.explicacion = "Iniciando sistema y recogiendo datos iniciales..."
+        self.explicacion = "Iniciando sistema y conectando con Binance..."
         self.predictor = Predictor()
-        self.simulator = TradingSimulator(1000.0)
+        self.simulator = TradingSimulator(1000.0) # 1000 USD
         self.is_running = True
 
 state = AppState()
 
 async def background_update_task():
-    print("Iniciando motor de IA en segundo plano...")
+    print("[INFO] Iniciando motor de IA en segundo plano...")
 
+    # 1. Obtener histórico de Binance para entrenar
     state.history_prices = get_historical_prices(100)
     if state.history_prices:
-        print("Entrenando modelo inicial...")
+        print("[INFO] Entrenando modelo inicial con datos de Binance...")
         state.predictor.train(state.history_prices)
 
     while state.is_running:
         try:
+            # 2. Obtener precio actual (usa caché interna de 15s para evitar rate-limits)
             new_price = get_current_price()
-            if new_price:
+            if new_price and new_price > 0:
                 state.current_price = new_price
 
-                # Auto-corrección agresiva/estable
+                # Auto-corrección
                 state.predictor.update_correction(new_price)
 
-                state.history_prices.append(new_price)
-                if len(state.history_prices) > 100:
-                    state.history_prices.pop(0)
+                # Actualizamos histórico dinámicamente
+                if not state.history_prices or state.history_prices[-1] != new_price:
+                    state.history_prices.append(new_price)
+                    if len(state.history_prices) > 100:
+                        state.history_prices.pop(0)
 
+                # 3. Predicciones
                 state.predictions = state.predictor.predict_next_24h(state.history_prices)
 
-                # Cálculos de contexto extra
+                # 4. Características avanzadas
                 volatility, momentum, sma = calculate_features(state.history_prices)
                 sentiment = get_simulated_sentiment(momentum)
                 onchain = get_simulated_onchain(momentum)
 
-                # Tomar decisión
+                # 5. Tomar decisión
                 pred_24h = state.predictions[-1] if state.predictions else new_price
                 dec, conf, expl = make_decision(new_price, pred_24h, sentiment, onchain, volatility, momentum)
 
@@ -60,12 +65,13 @@ async def background_update_task():
                 state.confianza = conf
                 state.explicacion = expl
 
-                # Simular Trading
+                # 6. Simular Trading en USD
                 state.simulator.process_signal(dec, new_price, datetime.datetime.now())
 
         except Exception as e:
-            print(f"Error en tarea de fondo: {e}")
+            print(f"[ERROR] Tarea de fondo falló temporalmente: {e}")
 
+        # Refresco del loop: 5 segundos, pero la API real (fetcher) usará caché de 15s.
         await asyncio.sleep(5)
 
 @asynccontextmanager

@@ -1,21 +1,69 @@
 import requests
 import random
 import numpy as np
+import time
+
+# Variables para sistema de caché
+_cache = {
+    "current_price": {"value": None, "timestamp": 0},
+    "historical_prices": {"value": None, "timestamp": 0}
+}
+CACHE_TTL = 15  # Segundos de vida de la caché
+SYMBOL = "BTCUSDT" # Todo en USD y en Binance
 
 def get_current_price():
+    """Obtiene el precio actual de Binance con sistema de caché y fallback"""
+    current_time = time.time()
+
+    # Retornar de caché si es válido
+    if _cache["current_price"]["value"] is not None and (current_time - _cache["current_price"]["timestamp"] < CACHE_TTL):
+        return _cache["current_price"]["value"]
+
     try:
-        response = requests.get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=eur", timeout=5)
+        url = f"https://api.binance.com/api/v3/ticker/price?symbol={SYMBOL}"
+        response = requests.get(url, timeout=5)
         response.raise_for_status()
         data = response.json()
-        return float(data['bitcoin']['eur'])
+        price = float(data['price'])
+
+        # Guardar en caché
+        _cache["current_price"]["value"] = price
+        _cache["current_price"]["timestamp"] = current_time
+        return price
+
     except Exception as e:
-        print(f"Error obteniendo precio de CoinGecko, simulando fallback: {e}")
-        # Retornamos un precio base +- aleatorio si falla, evitando que el sistema colapse
-        return 65000.0 + random.uniform(-100, 100)
+        print(f"[Aviso] Error obteniendo precio de Binance: {e}")
+        # Fallback si Binance falla o bloquea la IP: Simulamos basado en el último conocido o base
+        last_price = _cache["current_price"]["value"]
+        if last_price:
+            fallback_price = last_price * (1 + random.uniform(-0.001, 0.001))
+            return round(fallback_price, 2)
+        return 65000.0 + random.uniform(-50, 50)
 
 def get_historical_prices(limit=100):
-    """Devuelve una lista de precios simulados coherentes para el histórico inicial."""
+    """Obtiene el histórico (cierre horario) desde Binance con caché para entrenar la IA"""
+    current_time = time.time()
+
+    # Histórico tiene un TTL mucho más alto ya que es por horas
+    if _cache["historical_prices"]["value"] is not None and (current_time - _cache["historical_prices"]["timestamp"] < 300):
+        return _cache["historical_prices"]["value"]
+
     try:
+        url = f"https://api.binance.com/api/v3/klines?symbol={SYMBOL}&interval=1h&limit={limit}"
+        response = requests.get(url, timeout=5)
+        response.raise_for_status()
+        data = response.json()
+
+        # Índice 4 es el precio de cierre en Binance
+        history = [float(kline[4]) for kline in data]
+
+        _cache["historical_prices"]["value"] = history
+        _cache["historical_prices"]["timestamp"] = current_time
+        return history
+
+    except Exception as e:
+        print(f"[Aviso] Error obteniendo histórico de Binance: {e}")
+        # Fallback: Generar histórico simulado coherente para no romper la app
         current = get_current_price()
         if not current:
             current = 65000.0
@@ -24,15 +72,13 @@ def get_historical_prices(limit=100):
         price = current
         for _ in range(limit):
             history.insert(0, price)
-            price = price * (1 + random.uniform(-0.01, 0.01))
+            price = price * (1 + random.uniform(-0.005, 0.005))
+
         return history
-    except Exception as e:
-        print(f"Error generando históricos: {e}")
-        return [65000.0] * limit
 
 def calculate_features(prices):
     """
-    Feature Engineering: Calcula indicadores técnicos adicionales basados en el precio.
+    Calcula indicadores técnicos basados en el precio.
     Devuelve: Volatilidad, Momentum, y Media Móvil de los últimos 5 periodos.
     """
     if len(prices) < 5:
@@ -53,21 +99,19 @@ def calculate_features(prices):
     return round(volatility, 4), round(momentum, 4), round(sma, 2)
 
 def get_simulated_volume(volatility):
-    """Simula volumen coherente: más volatilidad = más volumen"""
-    base_volume = random.uniform(1000, 5000)
-    multiplier = 1 + (volatility * 5) # Si hay mucha volatilidad, el volumen se multiplica
+    """Simula volumen en USD coherente con la volatilidad actual"""
+    base_volume = random.uniform(5000000, 15000000)
+    multiplier = 1 + (volatility * 10)
     return round(base_volume * multiplier, 2)
 
 def get_simulated_sentiment(momentum):
-    """Simula sentimiento del mercado (0-100) alineado con el momentum"""
+    """Simula sentimiento del mercado (0-100)"""
     base = 50
-    # Si momentum es positivo, suma al sentimiento; si negativo, resta. Limitado entre 10 y 90
-    sentiment = base + (momentum * 5) + random.uniform(-10, 10)
+    sentiment = base + (momentum * 8) + random.uniform(-5, 5)
     return round(max(10, min(90, sentiment)), 2)
 
 def get_simulated_onchain(momentum):
-    """Simula movimientos de ballenas alineados a la tendencia corta"""
-    # Momentum negativo = posibles entradas (positivo), momentum positivo = posibles salidas (negativo)
-    base_flow = -momentum * 1000
-    flow = base_flow + random.uniform(-2000, 2000)
+    """Simula flujos netos on-chain en USD"""
+    base_flow = -momentum * 50000
+    flow = base_flow + random.uniform(-100000, 100000)
     return round(flow, 2)

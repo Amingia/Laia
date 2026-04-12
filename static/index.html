@@ -6,18 +6,26 @@
     <title>IA Bitcoin Predictor & Trader Pro</title>
     <link rel="stylesheet" href="/static/style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>IA Bitcoin Predictor & Auto-Trader Pro</h1>
-            <p>Análisis Avanzado con Confirmación de Señales y Simulación de Riesgo Real</p>
-        </header>
+    <div class="top-nav">
+        <div class="nav-brand">
+            <i class="fab fa-bitcoin" style="color: #f7931a;"></i>
+            <span>BTC Predictor Pro</span>
+        </div>
+        <div class="nav-status">
+            <span class="status-indicator live"></span> Binance en vivo
+        </div>
+    </div>
 
+    <div class="container">
         <div class="dashboard">
             <!-- Panel Principal -->
             <div class="panel main-chart">
-                <h2>Gráfico de Precio y Predicción</h2>
+                <div class="panel-header">
+                    <h2><i class="fas fa-chart-line"></i> Gráfico de Predicción (USD)</h2>
+                </div>
                 <div class="chart-container">
                     <canvas id="btcChart"></canvas>
                 </div>
@@ -25,50 +33,58 @@
 
             <!-- Panel Lateral (Estadísticas y Decisión) -->
             <div class="panel stats-panel">
-                <h2>Rendimiento IA</h2>
-                <div class="stat-box">
-                    <span>Precisión (Dirección Correcta)</span>
-                    <h3 id="iaAccuracy">Calculando...</h3>
-                    <small id="iaTotalPred">Muestras: 0</small>
+                <div class="panel-header">
+                    <h2><i class="fas fa-robot"></i> Análisis de IA</h2>
                 </div>
 
-                <h2>Mercado Actual</h2>
-                <div class="stat-box">
-                    <span>Precio Actual (BTC/EUR)</span>
+                <div class="stat-box primary">
+                    <span>Precio Actual (BTC/USD)</span>
                     <h3 id="currentPrice">Cargando...</h3>
-                </div>
-                <div class="stat-box">
-                    <span>Predicción a 24h</span>
-                    <h3 id="predictedPrice">Cargando...</h3>
                 </div>
 
                 <div class="decision-box" id="decisionBox">
                     <h3 id="decisionSignal">ESPERANDO DATOS</h3>
                     <p id="decisionConf">Confianza: 0%</p>
-                    <p id="decisionExp" class="explanation">Analizando mercado...</p>
+                </div>
+
+                <div class="explanation-box">
+                    <strong>Motivo de decisión:</strong>
+                    <p id="decisionExp">Analizando mercado...</p>
+                </div>
+
+                <div class="metrics-grid">
+                    <div class="metric">
+                        <span>Predicción a 24h</span>
+                        <strong id="predictedPrice">Cargando...</strong>
+                    </div>
+                    <div class="metric">
+                        <span>Precisión del Modelo</span>
+                        <strong id="iaAccuracy">0.0%</strong>
+                        <small id="iaTotalPred">(0 muestras)</small>
+                    </div>
                 </div>
             </div>
 
             <!-- Panel Inferior (Simulador) -->
             <div class="panel simulator-panel">
-                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 15px;">
-                    <h2 style="border:none; padding:0; margin:0;">Simulador de Trading Realista</h2>
-                    <span style="font-size: 0.85rem; color: #888;">Comisión: 0.1% | Cooldown: 3m</span>
+                <div class="panel-header" style="display: flex; justify-content: space-between;">
+                    <h2><i class="fas fa-wallet"></i> Simulador de Trading Realista</h2>
+                    <span class="badge">Comisión: 0.1% | Cooldown: 3m</span>
                 </div>
 
                 <div class="sim-stats">
                     <div class="sim-box highlight-box" id="profitBox">
                         <span>Rentabilidad Total</span>
                         <h3 id="simProfit">0.00%</h3>
-                        <small id="simProfitEur">€ 0.00</small>
+                        <small id="simProfitUsd">$ 0.00</small>
                     </div>
                     <div class="sim-box">
-                        <span>Balance Total (EUR)</span>
+                        <span>Balance Total (USD)</span>
                         <h3 id="simTotal">Cargando...</h3>
                     </div>
                     <div class="sim-box">
-                        <span>Euros Disponibles</span>
-                        <h3 id="simEur">Cargando...</h3>
+                        <span>Dólares Disponibles</span>
+                        <h3 id="simUsd">Cargando...</h3>
                     </div>
                     <div class="sim-box">
                         <span>Bitcoin (BTC)</span>
@@ -76,21 +92,23 @@
                     </div>
                 </div>
 
-                <h3>Últimas Operaciones</h3>
+                <div class="panel-header" style="margin-top: 20px;">
+                    <h3><i class="fas fa-history"></i> Últimas Operaciones</h3>
+                </div>
                 <div class="table-container">
                     <table id="historyTable">
                         <thead>
                             <tr>
                                 <th>Hora</th>
-                                <th>Tipo</th>
-                                <th>Precio (EUR)</th>
-                                <th>Neto (EUR)</th>
+                                <th>Acción</th>
+                                <th>Precio (USD)</th>
+                                <th>Capital (USD)</th>
                                 <th>Cantidad (BTC)</th>
                                 <th>Comisión</th>
                             </tr>
                         </thead>
                         <tbody id="historyBody">
-                            <tr><td colspan="6" style="text-align: center;">Sin operaciones aún</td></tr>
+                            <tr><td colspan="6" style="text-align: center; color: #888;">El simulador está esperando la mejor oportunidad...</td></tr>
                         </tbody>
                     </table>
                 </div>

@@ -1,7 +1,7 @@
 @echo off
 cd /d %~dp0
 echo ===================================================
-echo     Iniciando IA Bitcoin Predictor ^& Trader...
+echo     Iniciando IA Bitcoin Predictor ^& Trader Pro...
 echo ===================================================
 echo.
 
@@ -19,5 +19,5 @@ echo Manten esta ventana abierta mientras uses la aplicacion.
 echo Presiona Ctrl+C para cerrar el servidor.
 echo.
 
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 pause

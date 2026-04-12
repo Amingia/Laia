@@ -2,6 +2,11 @@ let chartInstance = null;
 
 function initChart() {
     const ctx = document.getElementById('btcChart').getContext('2d');
+
+    // Paleta estilo Binance
+    Chart.defaults.color = '#848e9c';
+    Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto';
+
     chartInstance = new Chart(ctx, {
         type: 'line',
         data: {
@@ -10,40 +15,52 @@ function initChart() {
                 {
                     label: 'Precio Real',
                     data: [],
-                    borderColor: '#2962ff',
-                    backgroundColor: 'rgba(41, 98, 255, 0.1)',
+                    borderColor: '#fcd535', // Amarillo Binance
+                    backgroundColor: 'rgba(252, 213, 53, 0.1)',
                     borderWidth: 2,
                     fill: true,
-                    tension: 0.1
+                    tension: 0.1,
+                    pointRadius: 0,
+                    pointHoverRadius: 4
                 },
                 {
                     label: 'Predicción IA',
                     data: [],
-                    borderColor: '#ff9100',
+                    borderColor: '#0ecb81', // Verde subida
                     borderDash: [5, 5],
                     borderWidth: 2,
                     fill: false,
-                    tension: 0.1
+                    tension: 0.1,
+                    pointRadius: 0
                 }
             ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { legend: { labels: { color: '#e0e0e0' } } },
-            scales: {
-                x: { ticks: { color: '#888888' }, grid: { color: '#333333' } },
-                y: { ticks: { color: '#888888' }, grid: { color: '#333333' } }
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { position: 'top', align: 'end', labels: { boxWidth: 12, usePointStyle: true } },
+                tooltip: {
+                    backgroundColor: '#2b3139', titleColor: '#eaecef', bodyColor: '#eaecef',
+                    borderColor: '#474d57', borderWidth: 1, padding: 10
+                }
             },
-            animation: { duration: 0 }
+            scales: {
+                x: { grid: { color: '#2b3139', drawBorder: false } },
+                y: { grid: { color: '#2b3139', drawBorder: false }, position: 'right' }
+            },
+            animation: { duration: 0 } // Desactivada para fluidez
         }
     });
 }
 
 function updateChart(history, predictions) {
     if (!chartInstance || !history || history.length === 0) return;
+
     const labels = [], realData = [], predData = [];
 
+    // Llenar pasado
     for (let i = 0; i < history.length; i++) {
         labels.push(`H-${history.length - i}`);
         realData.push(history[i]);
@@ -51,8 +68,19 @@ function updateChart(history, predictions) {
     }
 
     const currentPoint = history[history.length - 1];
+
+    // Si hay predicción y no es igual a pasado, colorear rojo/verde
     if (predictions && predictions.length > 0) {
         predData[predData.length - 1] = currentPoint;
+
+        // Cambiar color de la predicción según si predice subida o bajada respecto al precio actual
+        const endPrice = predictions[predictions.length - 1];
+        if (endPrice < currentPoint) {
+            chartInstance.data.datasets[1].borderColor = '#f6465d'; // Rojo
+        } else {
+            chartInstance.data.datasets[1].borderColor = '#0ecb81'; // Verde
+        }
+
         for (let i = 0; i < predictions.length; i++) {
             labels.push(`H+${i+1}`);
             realData.push(null);
@@ -70,15 +98,15 @@ function updateUI(data) {
     // Rendimiento IA
     if (data.ia_accuracy !== undefined) {
         document.getElementById('iaAccuracy').innerText = `${data.ia_accuracy.toFixed(1)}%`;
-        document.getElementById('iaTotalPred').innerText = `Muestras analizadas: ${data.total_predictions}`;
+        document.getElementById('iaTotalPred').innerText = `(${data.total_predictions} muestras)`;
     }
 
-    // Precios
+    // Precios USD
     if (data.precio_actual) {
-        document.getElementById('currentPrice').innerText = `€ ${data.precio_actual.toFixed(2)}`;
+        document.getElementById('currentPrice').innerText = `$ ${data.precio_actual.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
     }
     if (data.prediccion_24h) {
-        document.getElementById('predictedPrice').innerText = `€ ${data.prediccion_24h.toFixed(2)}`;
+        document.getElementById('predictedPrice').innerText = `$ ${data.prediccion_24h.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
     }
 
     // Decisión
@@ -95,18 +123,18 @@ function updateUI(data) {
         document.getElementById('decisionExp').innerText = data.explicacion;
     }
 
-    // Simulador
+    // Simulador USD
     if (data.balance) {
-        document.getElementById('simTotal').innerText = `€ ${data.balance.total_value.toFixed(2)}`;
-        document.getElementById('simEur').innerText = `€ ${data.balance.balance_euro.toFixed(2)}`;
+        document.getElementById('simTotal').innerText = `$ ${data.balance.total_value.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        document.getElementById('simUsd').innerText = `$ ${data.balance.balance_usd.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
         document.getElementById('simBtc').innerText = `₿ ${data.balance.balance_btc.toFixed(6)}`;
 
         const profitBox = document.getElementById('profitBox');
-        const profitEurEl = document.getElementById('simProfitEur');
+        const profitUsdEl = document.getElementById('simProfitUsd');
         const profitEl = document.getElementById('simProfit');
 
         profitEl.innerText = `${data.balance.profit_percent.toFixed(2)}%`;
-        profitEurEl.innerText = `${data.balance.profit_loss >= 0 ? '+' : ''}€ ${data.balance.profit_loss.toFixed(2)}`;
+        profitUsdEl.innerText = `${data.balance.profit_loss >= 0 ? '+' : ''}$ ${data.balance.profit_loss.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
 
         profitBox.className = 'sim-box highlight-box';
         if (data.balance.profit_loss > 0) profitBox.classList.add('profit-positive');
@@ -119,11 +147,11 @@ function updateUI(data) {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${op.time}</td>
-                    <td class="${op.type.toLowerCase()}">${op.type}</td>
-                    <td>€ ${op.price.toFixed(2)}</td>
-                    <td>€ ${op.amount_eur.toFixed(2)}</td>
+                    <td class="${op.type.toLowerCase()}"><i class="fas ${op.type === 'COMPRA' ? 'fa-arrow-up' : 'fa-arrow-down'}"></i> ${op.type}</td>
+                    <td>$ ${op.price.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                    <td>$ ${op.amount_usd.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                     <td>₿ ${op.btc.toFixed(6)}</td>
-                    <td class="fee">€ ${op.fee.toFixed(2)}</td>
+                    <td class="fee">$ ${op.fee.toFixed(2)}</td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -149,5 +177,5 @@ async function fetchData() {
 document.addEventListener('DOMContentLoaded', () => {
     initChart();
     fetchData();
-    setInterval(fetchData, 5000);
+    setInterval(fetchData, 5000); // El frontend consulta cada 5s, pero el backend usa caché
 });
