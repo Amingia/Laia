@@ -1,16 +1,17 @@
-# 🚀 IA Bitcoin Predictor & Auto-Trader Pro v4
+# 🚀 IA Bitcoin Predictor & Auto-Trader Pro v6
 
-¡Bienvenido a la versión definitiva v4! Este programa es una herramienta profesional impulsada por Inteligencia Artificial que analiza el mercado de Bitcoin en tiempo real **usando datos oficiales de Binance**, realiza predicciones a futuro y simula estrategias de trading automáticas en **Dólares (USD)**.
+¡Bienvenido a la versión definitiva v6! Este programa es una herramienta profesional impulsada por Inteligencia Artificial que analiza el mercado de Bitcoin en tiempo real **usando datos oficiales de Binance**, realiza predicciones a futuro y simula estrategias de trading automáticas en **Dólares (USD)**.
 
 ---
 
-## 🌟 ¿Qué incluye esta versión V4 Profesional?
+## 🌟 Novedades V6 - Menos ruido, Más claridad
 
-*   **📈 Gráfico Evolutivo de Alta Claridad:** El gráfico principal ahora es un eje temporal real y continuo. Podrás ver en horas exactas el histórico y cómo se proyecta el futuro en una curva suave y realista. Incluye línea temporal "AHORA".
-*   **🤖 Modo Activo y Modo Observación:** Por defecto el simulador está en "Modo Observación" para que veas cómo piensa la IA sin ensuciar la tabla. Puedes activar el simulador desde el interruptor en la esquina superior derecha.
-*   **🧠 Métricas Reales de IA (Persistentes):** Ahora sabrás de verdad si la IA es buena. El sistema guarda estadísticas aunque lo cierres (`stats.json`), mostrándote el Error Medio (MAE), Porcentaje de Acierto y el estado de Estabilidad en tiempo real.
-*   **🧠 IA Más Robusta y Anti-Ruido:** El motor de predicción usa cálculo de "Aceleración" de mercado, y solo opera si las medias móviles, el momentum, y la proyección futura le dan la razón. Evita operar en mercados laterales o estancados.
-*   **🖥️ Dashboard Limpio y Enocado:** Hemos eliminado paneles inútiles ("Estado de la Cartera"). Ahora toda tu atención va al gráfico principal, a las métricas directas superiores (KPIs) y a la explicación en español natural de por qué la IA toma una decisión.
+En esta versión hemos eliminado todo lo que no aportaba valor inmediato y nos hemos centrado en hacer la interfaz **extremadamente clara y fácil de entender en 3 segundos.**
+
+*   **📈 El Gráfico es el Rey:** Ocupa el 75% de la pantalla. Un eje temporal real y continuo que te muestra la línea amarilla (pasado en Binance) y la punteada (hacia dónde la IA cree que irá). Separadas visualmente por la línea "AHORA".
+*   **🤖 Modos Claros y Explicados:** Por defecto el sistema está en "Modo Observación (La IA solo analiza)". Puedes activarlo desde el botón superior derecho, momento en el que empezará a usar tu Cartera Virtual de $1000.
+*   **🧠 Decisiones Naturales:** La IA ahora te explica con una frase directa en español por qué recomienda Comprar, Vender o Mantener. No hay métricas técnicas confusas, solo un `% de Acierto` global.
+*   **🗑️ Tablas Inteligentes:** Si la IA no ha encontrado ninguna oportunidad de mercado buena, la tabla de operaciones no aparecerá vacía aburriendo la pantalla. En su lugar verás un mensaje amigable indicando que el sistema está a la espera.
 
 ---
 
@@ -41,13 +42,5 @@ Solo necesitas tener instalado **Python**.
 
 ---
 
-## 🔍 Interpretando el Panel
-
-*   **Tarjetas Superiores:** Te resumen el precio actual (USD), la señal, tu precisión IA y tu balance en un segundo.
-*   **Gráfico Evolutivo:** La línea amarilla continua es el pasado (Binance) y la línea punteada es hacia dónde la IA cree que el mercado irá (Verde = Sube, Rojo = Baja).
-*   **Análisis Inteligente:** El bloque derecho te traduce toda la matemática de la IA en una sola frase en español que puedes entender ("Mercado lateral", "Caída inminente", etc).
-
----
-
 **¡Aviso Legal!**
-*Este software es educativo y de simulación algorítmica. NO DEBE utilizarse para operar dinero real sin supervisión ni adaptaciones avanzadas. El autor no se hace responsable de pérdidas financieras derivadas del uso de este algoritmo.*
+*Este software es educativo y de simulación algorítmica. NO DEBE utilizarse para operar dinero real sin supervisión ni adaptaciones avanzadas. El autor no se hace responsable de pérdidas financieras.*

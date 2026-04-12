@@ -1,10 +1,19 @@
 let chartInstance = null;
 let currentInterval = '1h';
-let lastHistoryData = null;
 
-// Envía cambio de modo al backend
+// Envía cambio de modo al backend y actualiza etiqueta en vivo
 document.getElementById('modeToggle').addEventListener('change', async (e) => {
     const isActive = e.target.checked;
+
+    const label = document.getElementById('modeLabelText');
+    if(isActive) {
+        label.innerText = "Modo Activo (Usando cartera virtual)";
+        label.style.color = "var(--success)";
+    } else {
+        label.innerText = "Modo Observación (La IA solo analiza)";
+        label.style.color = "var(--text-light)";
+    }
+
     await fetch('/api/mode', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
@@ -33,7 +42,7 @@ function initChart() {
             datasets: [
                 {
                     label: 'Histórico (Real)',
-                    data: [], // Será un array de objetos {x: timestamp, y: precio}
+                    data: [],
                     borderColor: '#fcd535',
                     borderWidth: 2,
                     tension: 0.1,
@@ -43,7 +52,7 @@ function initChart() {
                 },
                 {
                     label: 'Predicción IA',
-                    data: [], // Será un array de objetos {x: timestamp, y: precio}
+                    data: [],
                     borderColor: '#0ecb81',
                     borderDash: [5, 5],
                     borderWidth: 2,
@@ -96,25 +105,15 @@ function initChart() {
                 x: {
                     type: 'time',
                     time: {
-                        displayFormats: {
-                            millisecond: 'HH:mm:ss',
-                            second: 'HH:mm:ss',
-                            minute: 'HH:mm',
-                            hour: 'HH:mm',
-                            day: 'MMM dd',
-                            week: 'MMM dd',
-                            month: 'MMM yyyy'
-                        }
+                        displayFormats: { millisecond: 'HH:mm', second: 'HH:mm', minute: 'HH:mm', hour: 'HH:mm', day: 'MMM dd', week: 'MMM dd', month: 'MMM yyyy' }
                     },
                     grid: { color: '#2b3139', drawBorder: false },
-                    ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 8 }
+                    ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 10 }
                 },
                 y: {
                     grid: { color: '#2b3139', drawBorder: false },
                     position: 'right',
-                    ticks: {
-                        callback: function(value) { return '$' + value.toLocaleString('en-US'); }
-                    }
+                    ticks: { callback: function(value) { return '$' + value.toLocaleString('en-US'); } }
                 }
             },
             animation: { duration: 0 }
@@ -127,22 +126,19 @@ function updateChart(chartDataRaw) {
 
     const histPrices = chartDataRaw.history.prices;
     const histTimes = chartDataRaw.history.times;
-
     const predPrices = chartDataRaw.prediction.prices;
     const predTimes = chartDataRaw.prediction.times;
 
     const realDataFormatted = [];
     const predDataFormatted = [];
 
-    // Cargar histórico real
     for (let i = 0; i < histPrices.length; i++) {
         realDataFormatted.push({ x: histTimes[i], y: histPrices[i] });
     }
 
-    // Cargar predicción
     if (predPrices && predTimes && predPrices.length > 0) {
         const lastRealPoint = realDataFormatted[realDataFormatted.length - 1];
-        predDataFormatted.push({ x: lastRealPoint.x, y: lastRealPoint.y }); // Conectar curva
+        predDataFormatted.push({ x: lastRealPoint.x, y: lastRealPoint.y });
 
         for (let i = 0; i < predPrices.length; i++) {
             if (i < predTimes.length) {
@@ -150,58 +146,90 @@ function updateChart(chartDataRaw) {
             }
         }
 
-        // Colorear verde o rojo según la predicción
         const currentPrice = lastRealPoint.y;
         const endPrice = predPrices[predPrices.length - 1];
         chartInstance.data.datasets[1].borderColor = (endPrice < currentPrice) ? '#f6465d' : '#0ecb81';
     }
 
-    // Actualizar línea de "AHORA"
     const nowTime = realDataFormatted.length > 0 ? realDataFormatted[realDataFormatted.length - 1].x : Date.now();
     chartInstance.options.plugins.annotation.annotations.nowLine.xMin = nowTime;
     chartInstance.options.plugins.annotation.annotations.nowLine.xMax = nowTime;
 
     chartInstance.data.datasets[0].data = realDataFormatted;
     chartInstance.data.datasets[1].data = predDataFormatted;
-
     chartInstance.update();
 }
 
 function updateUI(data) {
     // Top Info
-    document.getElementById('marketStateTag').innerText = data.market_state;
+    document.getElementById('marketStateTag').innerText = data.market_state || "Evaluando";
 
-    // KPIs
+    // KPIs Básicos
     document.getElementById('kpiPrice').innerText = `$${data.precio_actual.toLocaleString('en-US')}`;
 
+    // Decisión (Coloreado dinámico del fondo de la tarjeta)
+    const kpiSigCard = document.getElementById('kpiSignalCard');
     const kpiSig = document.getElementById('kpiSignal');
     kpiSig.innerText = data.decision;
-    kpiSig.className = data.decision === 'BUY' ? 'text-success' : (data.decision === 'SELL' ? 'text-danger' : 'text-warning');
-    document.getElementById('kpiConf').innerText = `Conf: ${(data.confianza * 100).toFixed(0)}%`;
+    kpiSigCard.className = 'kpi-card'; // Reset
+    if(data.decision === 'BUY') {
+        kpiSigCard.classList.add('bg-buy');
+        kpiSig.className = 'text-success';
+    } else if(data.decision === 'SELL') {
+        kpiSigCard.classList.add('bg-sell');
+        kpiSig.className = 'text-danger';
+    } else {
+        kpiSigCard.classList.add('bg-hold');
+        kpiSig.className = 'text-warning';
+    }
+    document.getElementById('kpiConf').innerText = `Confianza: ${(data.confianza * 100).toFixed(0)}%`;
 
+    // IA Precisión Simple
     if (data.ia_metrics) {
         document.getElementById('kpiAcc').innerText = `${data.ia_metrics.accuracy}%`;
-        document.getElementById('kpiMae').innerText = `Error: $${data.ia_metrics.mae}`;
-
-        document.getElementById('iaStability').innerText = data.ia_metrics.estabilidad;
-        document.getElementById('iaStreak').innerText = data.ia_metrics.racha;
+        document.getElementById('kpiTotalSamples').innerText = `De ${data.ia_metrics.total} predicciones`;
     }
 
+    // Razón IA explicada
     document.getElementById('decisionExp').innerText = data.explicacion;
 
-    // Simulador
+    // Simulador y Cartera
     if (data.balance) {
+        // Solo mostrar la tarjeta de balance si el simulador está activo o tiene saldo alterado
+        const balanceCard = document.getElementById('kpiBalanceCard');
+        if(data.balance.mode_active || data.balance.profit_loss !== 0) {
+            balanceCard.style.display = 'block';
+            document.getElementById('kpiBalance').innerText = `$${data.balance.total_value.toLocaleString('en-US', {minimumFractionDigits:2})}`;
+
+            const pnlEl = document.getElementById('kpiPnl');
+            pnlEl.innerText = `${data.balance.profit_loss >= 0 ? '+' : ''}$${data.balance.profit_loss.toLocaleString('en-US', {minimumFractionDigits:2})}`;
+            pnlEl.className = data.balance.profit_loss >= 0 ? 'text-success' : 'text-danger';
+        } else {
+            balanceCard.style.display = 'none';
+        }
+
+        // Sincronizar el toggle visual
         document.getElementById('modeToggle').checked = data.balance.mode_active;
+        const label = document.getElementById('modeLabelText');
+        if(data.balance.mode_active) {
+            label.innerText = "Modo Activo (Usando cartera virtual)";
+            label.style.color = "var(--success)";
+        } else {
+            label.innerText = "Modo Observación (La IA solo analiza)";
+            label.style.color = "var(--text-muted)";
+        }
 
-        document.getElementById('kpiBalance').innerText = `$${data.balance.total_value.toLocaleString('en-US', {minimumFractionDigits:2})}`;
-        const pnlEl = document.getElementById('kpiPnl');
-        pnlEl.innerText = `${data.balance.profit_loss >= 0 ? '+' : ''}$${data.balance.profit_loss.toLocaleString('en-US', {minimumFractionDigits:2})}`;
-        pnlEl.className = data.balance.profit_loss >= 0 ? 'text-success' : 'text-danger';
-
+        // Tabla Dinámica o Empty State
+        const emptyState = document.getElementById('emptyStateMsg');
+        const historyContainer = document.getElementById('historyContainer');
         const tbody = document.getElementById('historyBody');
+
         if (data.balance.history && data.balance.history.length > 0) {
+            emptyState.style.display = 'none';
+            historyContainer.style.display = 'block';
+
             tbody.innerHTML = '';
-            // Mostrar solo las últimas 10
+            // Mostrar últimas 10
             const recentOps = data.balance.history.slice(0, 10);
             recentOps.forEach(op => {
                 const tr = document.createElement('tr');
@@ -213,6 +241,9 @@ function updateUI(data) {
                 `;
                 tbody.appendChild(tr);
             });
+        } else {
+            emptyState.style.display = 'block';
+            historyContainer.style.display = 'none';
         }
     }
 }
@@ -222,7 +253,7 @@ async function fetchChartData() {
         const res = await fetch(`/api/chart?interval=${currentInterval}`);
         if (res.ok) {
             const data = await res.json();
-            lastHistoryData = data;
+            window.lastChartData = data;
             updateChart(data);
         }
     } catch(e) {}
@@ -234,10 +265,13 @@ async function fetchData() {
         if (response.ok) {
             const data = await response.json();
             updateUI(data);
+            if (window.lastChartData) {
+                // Actualizamos las predicciones futuras sobre el gráfico base
+                window.lastChartData.prediction.prices = data.prediccion_horas;
+                updateChart(window.lastChartData);
+            }
         }
-    } catch (error) {
-        console.error("Error API:", error);
-    }
+    } catch (error) {}
 }
 
 document.addEventListener('DOMContentLoaded', () => {
