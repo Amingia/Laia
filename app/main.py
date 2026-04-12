@@ -7,100 +7,95 @@ from contextlib import asynccontextmanager
 
 from app.data.fetcher import get_current_price, get_historical_data
 from app.model.predictor import AnalyticsPredictor
-from app.evaluation.validator import ExcelValidator
+from app.evaluation.internal_tracker import InternalValidator
 
 class AppState:
     def __init__(self):
         self.current_price = 0.0
-        self.history_data = {"prices": [], "volumes": [], "times": []}
+        self.history_data = {"prices": [], "times": []}
         self.predictions_obj = {"prices": [], "upper_bound": [], "lower_bound": []}
         self.prediction_times = []
         self.predictor = AnalyticsPredictor()
-        self.validator = ExcelValidator()
+        self.validator = InternalValidator()
         self.is_running = True
         self.trend = "Analizando..."
         self.mae = None
         self.accuracy = None
         self.total_evals = 0
-        self.last_pred_time = 0
 
 state = AppState()
 
 async def background_update_task():
-    print("[INFO] Iniciando Motor Predictivo y Evaluador v8...")
+    print("[INFO] Motor Analítico Predictor V9...")
 
-    # Base inicial: 300 velas de 1h de Binance
-    initial_data = get_historical_data(300)
+    # 100 velas es suficiente para extraer features potentes
+    initial_data = get_historical_data(100)
     state.history_data = initial_data
 
     if state.history_data["prices"]:
-        success = state.predictor.train(state.history_data["prices"], state.history_data["volumes"])
+        success = state.predictor.train(state.history_data["prices"])
         if success:
-            print("[INFO] IA Entrenada con éxito en datos recientes.")
+            print("[INFO] IA Entrenada con histórico reciente.")
 
     while state.is_running:
         try:
-            # Polling ultra-rápido (2-3s real)
+            # Sincronización ultrarrápida (1s) con la caché de Binance
             new_price = get_current_price()
             if new_price and new_price > 0:
                 state.current_price = new_price
 
-                # Rellena los huecos del Excel en base al precio actual (Actualización de predicciones pasadas)
-                state.validator.update_actuals(new_price)
-
-                # Actualizar el histórico real "en vivo" para la curva
+                # Actualizamos historial al vuelo para la gráfica continua
                 if not state.history_data["prices"] or state.history_data["prices"][-1] != new_price:
                     state.history_data["prices"].append(new_price)
                     state.history_data["times"].append(int(time.time() * 1000))
-                    if len(state.history_data["volumes"]) > 0:
-                        state.history_data["volumes"].append(state.history_data["volumes"][-1]) # Simulamos arrastre para el último tick
 
-                    if len(state.history_data["prices"]) > 300:
+                    if len(state.history_data["prices"]) > 100:
                         state.history_data["prices"].pop(0)
                         state.history_data["times"].pop(0)
-                        if len(state.history_data["volumes"]) > 0:
-                            state.history_data["volumes"].pop(0)
 
-                # Generar predicción suavizada de las próximas 24 horas
-                pred_result = state.predictor.predict_next_24h(state.history_data["prices"], state.history_data["volumes"])
+                # Intentamos re-evaluar si ha pasado tiempo para validar viejas predicciones
+                state.validator.update_actuals(state.current_price)
+
+                # Generar predicción a 24 horas cada tick, conectando siempre con el punto en vivo actual
+                pred_result = state.predictor.predict_next_24h(state.history_data["prices"])
 
                 if pred_result:
                     state.predictions_obj = pred_result
 
-                    # Tiempos de las predicciones (+1h, +2h, etc)
                     if state.history_data["times"]:
                         last_time = state.history_data["times"][-1]
                     else:
                         last_time = int(time.time() * 1000)
-                    state.prediction_times = [last_time + (i * 3600000) for i in range(1, 25)]
 
-                    # Grabar en Excel (Solo ocurre cada 55 mins internamente en el Validator)
+                    # Generamos los 25 tiempos futuros (+0h a +24h)
+                    state.prediction_times = [last_time + (i * 3600000) for i in range(25)]
+
+                    # Registrar nueva "foto" en el tracker para evaluarla en las siguientes 24 horas
+                    # Internamente el tracker sabe si ya grabó una hace poco
                     state.validator.record_new_prediction(state.current_price, state.predictions_obj["prices"])
 
-                    # Determinar tendencia para el dashboard
                     p_24h = state.predictions_obj["prices"][-1]
                     p_change = ((p_24h - state.current_price) / state.current_price) * 100
                     if p_change > 1.0:
-                        state.trend = "Fuerte Alza Esperada"
+                        state.trend = "Fuerte Alza Proyectada"
                     elif p_change > 0.1:
-                        state.trend = "Leve Subida"
+                        state.trend = "Leve Subida Proyectada"
                     elif p_change < -1.0:
-                        state.trend = "Fuerte Caída Esperada"
+                        state.trend = "Fuerte Caída Proyectada"
                     elif p_change < -0.1:
-                        state.trend = "Leve Bajada"
+                        state.trend = "Leve Bajada Proyectada"
                     else:
-                        state.trend = "Lateral / Indecisión"
+                        state.trend = "Mercado Lateral Estable"
 
-                # Cargar métricas en vivo del Excel para UI
-                metrics = state.validator.get_live_metrics()
+                metrics = state.validator.get_metrics()
                 state.mae = metrics["mae"]
                 state.accuracy = metrics["accuracy"]
-                state.total_evals = metrics["total_evaluadas"]
+                state.total_evals = metrics["total"]
 
         except Exception as e:
             print(f"[ERROR] Loop fondo temporal: {e}")
 
-        await asyncio.sleep(2) # Polling casi en tiempo real a Binance (con su propio caché)
+        await asyncio.sleep(1.5) # Polling casi en tiempo real
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -118,9 +113,6 @@ async def read_index():
 
 @app.get("/api/analysis")
 async def get_state():
-    # Estructuramos la respuesta para un frontend analítico y puro
-
-    # Si tenemos predicción a 24h, la extraemos para cálculo rápido en UI
     pred_24h_price = None
     pred_24h_pct = None
     if state.predictions_obj["prices"]:
@@ -139,9 +131,9 @@ async def get_state():
         },
         "chart_data": {
             "history": {
-                # Solo pasamos las últimas 50 velas a UI para no saturar el navegador, aunque la IA entrena con 300
-                "prices": state.history_data["prices"][-50:],
-                "times": state.history_data["times"][-50:]
+                # Para un encaje perfecto (48h visual), pasamos 48h (si existen)
+                "prices": state.history_data["prices"][-48:],
+                "times": state.history_data["times"][-48:]
             },
             "prediction": {
                 "prices": state.predictions_obj["prices"],

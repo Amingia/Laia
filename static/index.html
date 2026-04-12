@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BTC Analytics Predictor v8</title>
+    <title>BTC Predictive Analytics v9</title>
     <link rel="stylesheet" href="/static/style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.2.1/dist/chartjs-plugin-annotation.min.js"></script>
@@ -15,17 +15,17 @@
     <div class="top-nav">
         <div class="nav-brand">
             <i class="fab fa-bitcoin" style="color: #f7931a; font-size: 1.8rem;"></i>
-            <span>BTC Predictive Analytics</span>
-            <small class="version-tag">V8 Professional</small>
+            <span>BTC Analytics Center</span>
+            <small class="version-tag">V9 Professional</small>
         </div>
         <div class="nav-controls">
-            <div class="nav-status">
+            <div class="nav-status" id="binanceStatus">
                 <span class="status-indicator live"></span>
-                <span>Conexión en vivo Binance</span>
+                <span>Streaming Binance Spot</span>
             </div>
             <div class="nav-excel">
-                <i class="fas fa-file-excel" style="color: #21a366; margin-right: 5px;"></i>
-                <span>predicciones.xlsx activo</span>
+                <i class="fas fa-microchip" style="color: #21a366; margin-right: 5px;"></i>
+                <span>Evaluación de Modelo Activa</span>
             </div>
         </div>
     </div>
@@ -35,71 +35,68 @@
         <div class="kpi-row">
             <!-- Precio en Vivo -->
             <div class="kpi-card live-price-card">
-                <span class="label">Cotización Actual (BTCUSDT)</span>
+                <span class="label">Precio BTC/USDT</span>
                 <div class="price-container">
                     <h2 id="kpiPrice">Cargando...</h2>
                     <span class="pulsing-dot"></span>
                 </div>
-                <small class="subtext">Actualización en tiempo real</small>
+                <small class="subtext">Sincronización a 1s de mercado</small>
             </div>
 
             <!-- Proyección 24h -->
-            <div class="kpi-card projection-card">
-                <span class="label">Proyección de Mercado a 24h</span>
+            <div class="kpi-card projection-card highlight-border">
+                <span class="label">Predicción IA a 24 horas</span>
                 <h3 id="kpiTrend">Evaluando...</h3>
                 <div class="metric-group">
                     <div class="metric">
-                        <span class="metric-title">Precio Esperado</span>
+                        <span class="metric-title">Objetivo Esperado</span>
                         <strong id="kpiPredPrice">--</strong>
                     </div>
                     <div class="metric">
-                        <span class="metric-title">Variación Proyectada</span>
+                        <span class="metric-title">Margen</span>
                         <strong id="kpiPredPct">--</strong>
                     </div>
                 </div>
             </div>
 
             <!-- Precisión Real del Modelo -->
-            <div class="kpi-card accuracy-card highlight-border">
-                <span class="label">Validación Real de la IA (Excel)</span>
+            <div class="kpi-card accuracy-card">
+                <span class="label">Auditoría del Modelo (Tracking)</span>
 
-                <div id="kpiAccData" style="display: none;">
+                <div id="kpiAccData" style="display: none; width: 100%;">
                     <div class="metric-group split">
                         <div class="metric text-center">
                             <h3 id="kpiAccuracy" class="text-success" style="margin:0;">0%</h3>
-                            <span class="metric-title">Acierto Direccional</span>
+                            <span class="metric-title">Acierto Dirección</span>
                         </div>
                         <div class="metric text-center">
                             <h3 id="kpiMae" class="text-warning" style="margin:0;">0.0%</h3>
-                            <span class="metric-title">Error Promedio (MAE)</span>
+                            <span class="metric-title">Error Abs. (MAE)</span>
                         </div>
                     </div>
-                    <small class="subtext mt-1 text-center d-block">Basado en <span id="kpiEvals">0</span> predicciones registradas y verificadas.</small>
+                    <small class="subtext mt-1 text-center d-block">Basado en <span id="kpiEvals">0</span> validaciones a toro pasado.</small>
                 </div>
 
                 <div id="kpiAccEmpty" class="empty-metrics">
-                    <i class="fas fa-chart-pie"></i>
-                    <p>Aún recopilando datos para medir precisión real.<br>Revisando Excel en segundo plano...</p>
+                    <i class="fas fa-tasks"></i>
+                    <p>Aún recopilando datos para medir precisión real.<br>Debe pasar +1h para la primera evaluación.</p>
                 </div>
             </div>
         </div>
 
-        <!-- Dashboard Gráfico Central Absoluto -->
+        <!-- Dashboard Gráfico -->
         <div class="dashboard">
             <div class="panel main-chart">
                 <div class="chart-header">
-                    <h2><i class="fas fa-project-diagram"></i> Análisis Predictivo Evolutivo (Velas de 1 Hora)</h2>
+                    <h2><i class="fas fa-chart-area"></i> Proyección Evolutiva Continua (48h Pasado / 24h Futuro)</h2>
                     <div class="legend-info">
-                        <span class="legend-item"><span class="color-box real"></span>Histórico Binance</span>
-                        <span class="legend-item"><span class="color-box pred"></span>Proyección IA (Media)</span>
-                        <span class="legend-item"><span class="color-box band"></span>Incertidumbre Proyectada</span>
+                        <span class="legend-item"><span class="color-box real"></span>Histórico Real</span>
+                        <span class="legend-item"><span class="color-box pred"></span>Tendencia Proyectada</span>
+                        <span class="legend-item"><span class="color-box band"></span>Volatilidad Histórica Trasladada (Incertidumbre)</span>
                     </div>
                 </div>
                 <div class="chart-container">
                     <canvas id="btcChart"></canvas>
-                </div>
-                <div class="chart-footer">
-                    <p><i class="fas fa-info-circle"></i> La zona sombreada representa la banda de incertidumbre calculada según la volatilidad reciente del mercado. Cuanto más estrecha, mayor confianza estadística en la proyección.</p>
                 </div>
             </div>
         </div>
