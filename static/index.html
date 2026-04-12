@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BTC Analytics Predictor v10</title>
+    <title>BTC Analytics Predictor v11</title>
     <link rel="stylesheet" href="/static/style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.2.1/dist/chartjs-plugin-annotation.min.js"></script>
@@ -15,22 +15,20 @@
     <div class="top-nav">
         <div class="nav-brand">
             <i class="fab fa-bitcoin" style="color: #f7931a; font-size: 1.8rem;"></i>
-            <span>Laboratorio Analítico V10</span>
+            <span>Laboratorio Analítico V11 (Cero Ruido)</span>
         </div>
         <div class="nav-controls">
             <div class="nav-status">
-                <span class="status-indicator live"></span>
-                <span>Binance 1s Polling</span>
+                <span class="status-indicator live"></span> Binance 1s Polling
             </div>
         </div>
     </div>
 
     <div class="container">
-        <!-- KPIs Analíticos Puros -->
         <div class="kpi-row">
             <!-- Precio en Vivo -->
             <div class="kpi-card live-price-card">
-                <span class="label">Precio BTC/USDT</span>
+                <span class="label">Precio BTC/USDT (Ahora)</span>
                 <div class="price-container">
                     <h2 id="kpiPrice">Cargando...</h2>
                     <span class="pulsing-dot"></span>
@@ -39,7 +37,7 @@
 
             <!-- Proyección 24h -->
             <div class="kpi-card projection-card">
-                <span class="label">Proyección (H+24)</span>
+                <span class="label">Proyección de Cierre a +24h</span>
                 <h3 id="kpiTrend">Evaluando...</h3>
                 <div class="metric-group">
                     <div class="metric">
@@ -53,52 +51,59 @@
                 </div>
             </div>
 
-            <!-- Auditoría IA vs Baseline -->
+            <!-- Auditoría IA vs Baseline Desglosada -->
             <div class="kpi-card accuracy-card highlight-border" id="auditCard">
-                <span class="label">Auditoría del Modelo (vs Baseline Naive)</span>
+                <span class="label">Auditoría Transparente (IA vs Inercia)</span>
+                <div class="audit-grid" id="kpiAccData" style="display: none;">
 
-                <div id="kpiAccData" style="display: none; width: 100%;">
-                    <p id="auditStatus" class="audit-status text-warning">Evaluando rendimiento...</p>
-                    <div class="metric-group split">
-                        <div class="metric text-center">
-                            <h3 id="kpiMaeIA" style="margin:0;">0.0%</h3>
-                            <span class="metric-title">Error IA (MAE)</span>
-                        </div>
-                        <div class="metric text-center">
-                            <h3 id="kpiMaeBase" style="margin:0; color:#848e9c;">0.0%</h3>
-                            <span class="metric-title">Error Baseline</span>
-                        </div>
-                        <div class="metric text-center">
-                            <h3 id="kpiAccuracy" style="margin:0;">0%</h3>
-                            <span class="metric-title">Acierto Dir.</span>
-                        </div>
+                    <div class="audit-col text-center">
+                        <span class="audit-title">+1h</span>
+                        <div class="audit-badge" id="badge_1h">...</div>
+                        <small id="mae_1h">--</small>
                     </div>
-                    <small class="subtext mt-2 text-center d-block">Muestras Evaluadas: <span id="kpiEvals">0</span></small>
+
+                    <div class="audit-col text-center">
+                        <span class="audit-title">+2h</span>
+                        <div class="audit-badge" id="badge_2h">...</div>
+                        <small id="mae_2h">--</small>
+                    </div>
+
+                    <div class="audit-col text-center">
+                        <span class="audit-title">+4h</span>
+                        <div class="audit-badge" id="badge_4h">...</div>
+                        <small id="mae_4h">--</small>
+                    </div>
+
+                    <div class="audit-col text-center">
+                        <span class="audit-title">+24h</span>
+                        <div class="audit-badge" id="badge_24h">...</div>
+                        <small id="mae_24h">--</small>
+                    </div>
+
                 </div>
 
                 <div id="kpiAccEmpty" class="empty-metrics">
                     <i class="fas fa-microscope"></i>
-                    <p id="auditEmptyMsg">Aún recopilando datos suficientes para evaluar con fiabilidad.</p>
+                    <p>Esperando 1h desde el inicio para auditar la 1ª proyección.</p>
                 </div>
             </div>
         </div>
 
-        <!-- Dashboard Gráfico Transparente (7 Días + 24 Horas) -->
         <div class="dashboard">
             <div class="panel main-chart">
                 <div class="chart-header">
                     <h2><i class="fas fa-chart-line"></i> Contexto Evolutivo (168h Pasado / 24h Proyección)</h2>
                     <div class="legend-info">
                         <span class="legend-item"><span class="color-box real"></span>Histórico Real</span>
-                        <span class="legend-item"><span class="color-box pred"></span>Nodos de Predicción Exacta (Sin Maquillaje)</span>
-                        <span class="legend-item"><span class="color-box band"></span>Incertidumbre Estadísitica (Basada en Volatilidad 24h)</span>
+                        <span class="legend-item"><span class="color-box pred"></span>Nodos Predichos (+1,+2,+4,+24)</span>
+                        <span class="legend-item"><span class="color-box band"></span>Incertidumbre Empírica</span>
                     </div>
                 </div>
                 <div class="chart-container">
                     <canvas id="btcChart"></canvas>
                 </div>
                 <div class="chart-footer">
-                    <p><i class="fas fa-balance-scale"></i> <strong>Transparencia v10:</strong> La curva futura se dibuja uniendo <strong>exclusivamente</strong> los 4 horizontes proyectados por la IA (+1h, +2h, +4h, +24h). No aplicamos interpolaciones falsas de relleno. La banda sombreada representa el error histórico de volatilidad esperado en ese rango de tiempo exacto.</p>
+                    <p><i class="fas fa-check-circle"></i> <strong>V11 Saneada:</strong> El gráfico nunca resbala. Siempre verás 7 días de pasado y las líneas rectas que unen el precio actual a los anclajes de IA evaluados en la tabla superior. Sin "curvas bonitas" engañosas.</p>
                 </div>
             </div>
         </div>

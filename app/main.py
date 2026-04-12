@@ -22,25 +22,23 @@ class AppState:
 state = AppState()
 
 async def background_update_task():
-    print("[INFO] Laboratorio Predictivo V10 (Horizontes)...")
+    print("[INFO] Motor Analítico V11 (Cirugía de Saneamiento)...")
 
-    # 168 velas = 7 días completos
     initial_data = get_historical_data(168)
     state.history_data = initial_data
 
     if state.history_data["prices"]:
         success = state.predictor.train(state.history_data["prices"])
         if success:
-            print("[INFO] Modelos (1h, 2h, 4h, 24h) entrenados en contexto semanal.")
+            print("[INFO] Modelos (+1h, +2h, +4h, +24h) entrenados en contexto semanal 168h.")
 
     while state.is_running:
         try:
-            # Polling a 1s para sensación de tiempo real de Binance Spot
             new_price = get_current_price()
             if new_price and new_price > 0:
                 state.current_price = new_price
 
-                # Actualizar el último array del histórico
+                # Empalmamos exactamente el precio nuevo en el último nodo del histórico
                 if not state.history_data["prices"] or state.history_data["prices"][-1] != new_price:
                     state.history_data["prices"].append(new_price)
                     state.history_data["times"].append(int(time.time() * 1000))
@@ -51,11 +49,12 @@ async def background_update_task():
 
                 state.validator.update_actuals(state.current_price)
 
-                # Regresión multi-horizonte honesta
                 pred_result = state.predictor.predict_horizons(state.history_data["prices"])
 
                 if pred_result:
                     state.predictions_obj = pred_result
+
+                    # Registrar la predicción. El validador ya ignora llamadas repetidas en la misma hora (3500s).
                     state.validator.record_new_prediction(state.current_price, pred_result)
 
                     p_24h = pred_result["p_24h"]
@@ -98,10 +97,7 @@ async def get_state():
     p_24h = state.predictions_obj["p_24h"]
     p_24h_pct = ((p_24h - state.current_price) / state.current_price) * 100
 
-    metrics = state.validator.get_metrics()
-
-    # Generar los arrays futuros para el Frontend basado en los horizontes exactos
-    # Ignoramos el relleno falso. Solo puntos reales.
+    # Generar los arrays futuros limpios y sin NaNs para el gráfico
     now = int(time.time() * 1000)
     hour_ms = 3600000
 
@@ -131,10 +127,9 @@ async def get_state():
         "tendencia": state.trend,
         "prediccion_24h_usd": round(p_24h, 2),
         "prediccion_24h_pct": round(p_24h_pct, 2),
-        "evaluacion": metrics,
+        "evaluacion": state.validator.get_metrics(),
         "chart_data": {
             "history": {
-                # 168 horas = 7 días exactos
                 "prices": state.history_data["prices"],
                 "times": state.history_data["times"]
             },

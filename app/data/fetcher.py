@@ -3,7 +3,7 @@ import random
 import numpy as np
 import time
 
-# Caché ultracorta (1 segundo) para que el precio se sienta vivo
+# Caché ultracorta para precio real de Binance
 _cache = {
     "current_price": {"value": None, "timestamp": 0},
     "history_1h": {"value": None, "timestamp": 0}
@@ -34,13 +34,13 @@ def get_current_price():
 
 def get_historical_data(limit=168):
     """
-    Trae los datos históricos de Binance.
-    Por defecto 168h (7 días exactos) para visualización y contexto fuerte para entrenamiento.
+    Obtiene exactamente las últimas X velas.
+    Para el frontend y el entrenamiento usamos 168 (7 días exactos).
     """
     cache_key = "history_1h"
     current_time = time.time()
 
-    # 5 minutos de caché para velas de 1h es seguro
+    # 5 minutos de caché para velas de 1h
     if _cache.get(cache_key, {}).get("value") is not None and (current_time - _cache[cache_key]["timestamp"] < 300):
         return _cache[cache_key]["value"]
 
@@ -50,14 +50,24 @@ def get_historical_data(limit=168):
         response.raise_for_status()
         data = response.json()
 
-        history_prices = [float(k[4]) for k in data] # Precio de cierre
-        timestamps = [int(k[0]) for k in data]
+        # Validar y limpiar: Solo precios flotantes y timestamps enteros en milisegundos
+        history_prices = []
+        timestamps = []
+        for k in data:
+            try:
+                ts = int(k[0])
+                pr = float(k[4])
+                history_prices.append(pr)
+                timestamps.append(ts)
+            except:
+                continue
 
         result = {"prices": history_prices, "times": timestamps}
         _cache[cache_key] = {"value": result, "timestamp": current_time}
         return result
 
     except Exception as e:
+        print(f"[Fetcher] Error bajando Klines Binance: {e}")
         old_data = _cache.get(cache_key, {}).get("value")
         if old_data:
             return old_data
@@ -74,10 +84,6 @@ def get_historical_data(limit=168):
         return {"prices": history, "times": times}
 
 def calculate_advanced_features(prices):
-    """
-    Features técnicas útiles para los modelos por horizontes.
-    Utilizamos una ventana más amplia dado que ahora disponemos de 168 velas.
-    """
     if len(prices) < 24:
         return 0.0, 0.0, prices[-1], prices[-1], 0.0
 
@@ -89,11 +95,9 @@ def calculate_advanced_features(prices):
 
     momentum = ((recent[-1] - older[0]) / older[0]) * 100
 
-    # Aceleración simple
     momentum_prev = ((older[-1] - prices[-24]) / prices[-24]) * 100
     acceleration = momentum - momentum_prev
 
-    # Volatilidad (Desviación estándar de los retornos de las últimas 24h)
     returns = [(prices[i] - prices[i-1])/prices[i-1] for i in range(1, len(prices))]
     volatility = np.std(returns[-24:]) * 100 if len(returns) >= 24 else 0.0
 

@@ -21,13 +21,13 @@ function initChart() {
                     order: 2
                 },
                 {
-                    label: 'Proyección IA Nodos',
+                    label: 'Proyección IA (Nodos)',
                     data: [],
                     borderColor: '#0ecb81',
                     borderDash: [5, 5],
                     borderWidth: 2.5,
-                    tension: 0, // Cero tensión para líneas rectas honestas entre nodos
-                    pointRadius: 4, // Nodos visibles explícitamente
+                    tension: 0,
+                    pointRadius: 4,
                     pointHoverRadius: 6,
                     fill: false,
                     order: 1
@@ -69,8 +69,6 @@ function initChart() {
                     borderColor: '#2b3139',
                     borderWidth: 1,
                     padding: 12,
-                    titleFont: { size: 12, weight: 'normal' },
-                    bodyFont: { size: 14, weight: 'bold' },
                     callbacks: {
                         title: (context) => {
                             const date = new Date(context[0].parsed.x);
@@ -97,7 +95,7 @@ function initChart() {
                                 position: 'start',
                                 backgroundColor: 'rgba(30, 35, 41, 0.9)',
                                 color: '#eaecef',
-                                font: { size: 11, weight: 'bold', family: 'monospace' },
+                                font: { size: 11, weight: 'bold' },
                                 yAdjust: 10
                             }
                         }
@@ -107,20 +105,13 @@ function initChart() {
             scales: {
                 x: {
                     type: 'time',
-                    time: {
-                        displayFormats: { hour: 'HH:mm', day: 'dd MMM' },
-                        tooltipFormat: 'dd MMM, HH:mm'
-                    },
+                    time: { displayFormats: { hour: 'HH:mm', day: 'dd MMM' }, tooltipFormat: 'dd MMM, HH:mm' },
                     grid: { color: '#1e2329', drawBorder: false, tickLength: 0 },
-                    ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 14, font: {size: 11, color: '#848e9c'} }
+                    ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 14 }
                 },
                 y: {
-                    grid: { color: '#1e2329', drawBorder: false },
-                    position: 'right',
-                    ticks: {
-                        font: {size: 11, color: '#848e9c', family: 'monospace'},
-                        callback: function(value) { return '$' + value.toLocaleString('en-US'); }
-                    }
+                    grid: { color: '#1e2329', drawBorder: false }, position: 'right',
+                    ticks: { callback: function(value) { return '$' + value.toLocaleString('en-US'); } }
                 }
             },
             animation: { duration: 0 }
@@ -128,74 +119,97 @@ function initChart() {
     });
 }
 
-function updateChart(histData, predData) {
-    if (!chartInstance || !histData || !histData.prices || histData.prices.length === 0) return;
+function updateChart(chartData) {
+    if (!chartInstance || !chartData || chartData.history.prices.length === 0) return;
 
-    const realDataFormatted = [];
-    const predDataFormatted = [];
-    const upperDataFormatted = [];
-    const lowerDataFormatted = [];
+    const hist = chartData.history;
+    const pred = chartData.prediction;
 
-    // Exactamente 168h visuales del array
-    for (let i = 0; i < histData.prices.length; i++) {
-        realDataFormatted.push({ x: histData.times[i], y: histData.prices[i] });
+    const realData = [];
+    const predData = [];
+    const upperData = [];
+    const lowerData = [];
+
+    for (let i = 0; i < hist.prices.length; i++) {
+        realData.push({ x: hist.times[i], y: hist.prices[i] });
     }
+    const nowP = realData[realData.length - 1];
 
-    const lastRealPoint = realDataFormatted[realDataFormatted.length - 1];
+    if (pred && pred.prices && pred.prices.length > 0) {
+        predData.push({ x: nowP.x, y: nowP.y });
+        upperData.push({ x: nowP.x, y: nowP.y });
+        lowerData.push({ x: nowP.x, y: nowP.y });
 
-    // Conexión del futuro a partir de los Nodos limpios
-    if (predData && predData.prices && predData.prices.length > 0) {
+        for (let i = 0; i < pred.prices.length; i++) {
+            const t = pred.times[i];
+            const p = pred.prices[i];
+            const b_pct = pred.bounds_pct[i];
 
-        const nowTime = lastRealPoint.x;
-        const nowPrice = lastRealPoint.y;
-
-        predDataFormatted.push({ x: nowTime, y: nowPrice });
-        upperDataFormatted.push({ x: nowTime, y: nowPrice });
-        lowerDataFormatted.push({ x: nowTime, y: nowPrice });
-
-        for (let i = 0; i < predData.prices.length; i++) {
-            if (i < predData.times.length) {
-                const t = predData.times[i];
-                predDataFormatted.push({ x: t, y: predData.prices[i] });
-
-                // Las bounds vienen en %, las pasamos a precio real
-                const b_pct = predData.bounds_pct[i];
-                upperDataFormatted.push({ x: t, y: predData.prices[i] * (1 + (b_pct/100)) });
-                lowerDataFormatted.push({ x: t, y: predData.prices[i] * (1 - (b_pct/100)) });
-            }
+            predData.push({ x: t, y: p });
+            upperData.push({ x: t, y: p * (1 + (b_pct/100)) });
+            lowerData.push({ x: t, y: p * (1 - (b_pct/100)) });
         }
 
-        const endPrice = predData.prices[predData.prices.length - 1];
-        const isBullish = endPrice >= nowPrice;
+        const isBullish = pred.prices[pred.prices.length - 1] >= nowP.y;
+        const cColor = isBullish ? '#0ecb81' : '#f6465d';
+        const cBg = isBullish ? 'rgba(14, 203, 129, 0.1)' : 'rgba(246, 70, 93, 0.1)';
 
-        const trendColor = isBullish ? '#0ecb81' : '#f6465d';
-        const trendBgColor = isBullish ? 'rgba(14, 203, 129, 0.1)' : 'rgba(246, 70, 93, 0.1)';
-        const legendBandBorder = isBullish ? 'rgba(14, 203, 129, 0.25)' : 'rgba(246, 70, 93, 0.25)';
+        chartInstance.data.datasets[1].borderColor = cColor;
+        chartInstance.data.datasets[1].backgroundColor = cColor;
+        chartInstance.data.datasets[2].backgroundColor = cBg;
 
-        chartInstance.data.datasets[1].borderColor = trendColor;
-        chartInstance.data.datasets[1].backgroundColor = trendColor; // Nodos del color de la linea
-        chartInstance.data.datasets[2].backgroundColor = trendBgColor;
-
-        document.querySelector('.color-box.pred').style.backgroundColor = trendColor;
-        document.querySelector('.color-box.band').style.backgroundColor = trendBgColor;
-        document.querySelector('.color-box.band').style.borderColor = legendBandBorder;
+        document.querySelector('.color-box.pred').style.backgroundColor = cColor;
+        document.querySelector('.color-box.band').style.backgroundColor = cBg;
+        document.querySelector('.color-box.band').style.borderColor = cColor;
     }
 
-    chartInstance.options.plugins.annotation.annotations.nowLine.xMin = lastRealPoint.x;
-    chartInstance.options.plugins.annotation.annotations.nowLine.xMax = lastRealPoint.x;
+    chartInstance.options.plugins.annotation.annotations.nowLine.xMin = nowP.x;
+    chartInstance.options.plugins.annotation.annotations.nowLine.xMax = nowP.x;
 
-    // Fijar el eje temporal forzosamente para que el gráfico no 'patine' o desproporcione: (168h + 24h = 192h total vista)
-    const viewMin = lastRealPoint.x - (168 * 3600 * 1000);
-    const viewMax = lastRealPoint.x + (25 * 3600 * 1000);
-    chartInstance.options.scales.x.min = viewMin;
-    chartInstance.options.scales.x.max = viewMax;
+    chartInstance.options.scales.x.min = nowP.x - (168 * 3600 * 1000);
+    chartInstance.options.scales.x.max = nowP.x + (25 * 3600 * 1000);
 
-    chartInstance.data.datasets[0].data = realDataFormatted;
-    chartInstance.data.datasets[1].data = predDataFormatted;
-    chartInstance.data.datasets[2].data = upperDataFormatted;
-    chartInstance.data.datasets[3].data = lowerDataFormatted;
+    chartInstance.data.datasets[0].data = realData;
+    chartInstance.data.datasets[1].data = predData;
+    chartInstance.data.datasets[2].data = upperData;
+    chartInstance.data.datasets[3].data = lowerData;
 
     chartInstance.update();
+}
+
+function updateAudit(metrics) {
+    if (!metrics) return;
+
+    let hasData = false;
+    for (const [horizon, data] of Object.entries(metrics)) {
+        const badge = document.getElementById(`badge_${horizon}`);
+        const mae = document.getElementById(`mae_${horizon}`);
+
+        if (data.status === "ready") {
+            hasData = true;
+            if (data.color === "green") {
+                badge.className = "audit-badge win";
+                badge.innerText = `+ IA GANA (${data.accuracy}%)`;
+                mae.innerHTML = `<span class="text-success">${data.mae_ai}%</span> vs ${data.mae_base}%`;
+            } else {
+                badge.className = "audit-badge lose";
+                badge.innerText = `- IA PIERDE (${data.accuracy}%)`;
+                mae.innerHTML = `<span class="text-danger">${data.mae_ai}%</span> vs ${data.mae_base}%`;
+            }
+        } else {
+            badge.className = "audit-badge pending";
+            badge.innerText = "PENDIENTE";
+            mae.innerText = "Recopilando...";
+        }
+    }
+
+    if (hasData) {
+        document.getElementById('kpiAccEmpty').style.display = 'none';
+        document.getElementById('kpiAccData').style.display = 'flex';
+    } else {
+        document.getElementById('kpiAccEmpty').style.display = 'flex';
+        document.getElementById('kpiAccData').style.display = 'none';
+    }
 }
 
 function updateUI(data) {
@@ -205,58 +219,22 @@ function updateUI(data) {
 
     const trendEl = document.getElementById('kpiTrend');
     trendEl.innerText = data.tendencia || "Analizando...";
-
-    if (data.tendencia && (data.tendencia.includes("Alza") || data.tendencia.includes("Subida"))) {
-        trendEl.className = 'text-success';
-    } else if (data.tendencia && (data.tendencia.includes("Caída") || data.tendencia.includes("Bajada"))) {
-        trendEl.className = 'text-danger';
-    } else {
-        trendEl.className = 'text-warning';
-    }
+    trendEl.className = data.tendencia.includes("Alza") || data.tendencia.includes("Subida") ? 'text-success' :
+                       (data.tendencia.includes("Caída") || data.tendencia.includes("Bajada") ? 'text-danger' : 'text-warning');
 
     if (data.prediccion_24h_usd) {
         document.getElementById('kpiPredPrice').innerText = `$${data.prediccion_24h_usd.toLocaleString('en-US', {minimumFractionDigits: 0})}`;
         const pctEl = document.getElementById('kpiPredPct');
-        const pctVal = data.prediccion_24h_pct;
-        pctEl.innerText = `${pctVal >= 0 ? '+' : ''}${pctVal.toFixed(2)}%`;
-        pctEl.className = pctVal >= 0 ? 'text-success' : 'text-danger';
+        pctEl.innerText = `${data.prediccion_24h_pct >= 0 ? '+' : ''}${data.prediccion_24h_pct.toFixed(2)}%`;
+        pctEl.className = data.prediccion_24h_pct >= 0 ? 'text-success' : 'text-danger';
     }
 
-    // Auditoría vs Baseline
-    if (data.evaluacion && data.evaluacion.total > 0 && data.evaluacion.mae_ai !== null) {
-        document.getElementById('kpiAccEmpty').style.display = 'none';
-        document.getElementById('kpiAccData').style.display = 'block';
-
-        const statusMsg = document.getElementById('auditStatus');
-        statusMsg.innerText = data.evaluacion.status;
-
-        // Color dinámico según la comparación del Json Tracker
-        const cardBorder = document.getElementById('auditCard');
-        if (data.evaluacion.color === "green") {
-            statusMsg.className = 'audit-status text-success';
-            cardBorder.style.borderTopColor = 'var(--success)';
-            document.getElementById('kpiMaeIA').className = 'text-success';
-        } else if (data.evaluacion.color === "red") {
-            statusMsg.className = 'audit-status text-danger';
-            cardBorder.style.borderTopColor = 'var(--danger)';
-            document.getElementById('kpiMaeIA').className = 'text-danger';
-        } else {
-            statusMsg.className = 'audit-status text-warning';
-            cardBorder.style.borderTopColor = 'var(--warning)';
-            document.getElementById('kpiMaeIA').className = 'text-warning';
-        }
-
-        document.getElementById('kpiAccuracy').innerText = `${data.evaluacion.accuracy.toFixed(1)}%`;
-        document.getElementById('kpiMaeIA').innerText = `${data.evaluacion.mae_ai.toFixed(2)}%`;
-        document.getElementById('kpiMaeBase').innerText = `${data.evaluacion.mae_baseline.toFixed(2)}%`;
-        document.getElementById('kpiEvals').innerText = data.evaluacion.total;
-    } else {
-        document.getElementById('kpiAccEmpty').style.display = 'flex';
-        document.getElementById('kpiAccData').style.display = 'none';
+    if (data.evaluacion) {
+        updateAudit(data.evaluacion);
     }
 
     if(data.chart_data) {
-        updateChart(data.chart_data.history, data.chart_data.prediction);
+        updateChart(data.chart_data);
     }
 }
 
@@ -266,12 +244,8 @@ async function fetchData() {
         if (response.ok) {
             const data = await response.json();
             updateUI(data);
-            document.getElementById('binanceStatus').innerHTML = '<span class="status-indicator live"></span> <span>Binance 1s Polling</span>';
         }
-    } catch (error) {
-        console.error("Error API:", error);
-        document.getElementById('binanceStatus').innerHTML = '<span class="status-indicator error"></span> <span class="text-danger">Desconectado</span>';
-    }
+    } catch (error) {}
 }
 
 document.addEventListener('DOMContentLoaded', () => {
