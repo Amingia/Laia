@@ -1,35 +1,4 @@
 let chartInstance = null;
-let currentInterval = '1h';
-
-// Envía cambio de modo al backend y actualiza etiqueta en vivo
-document.getElementById('modeToggle').addEventListener('change', async (e) => {
-    const isActive = e.target.checked;
-
-    const label = document.getElementById('modeLabelText');
-    if(isActive) {
-        label.innerText = "Modo Activo (Usando cartera virtual)";
-        label.style.color = "var(--success)";
-    } else {
-        label.innerText = "Modo Observación (La IA solo analiza)";
-        label.style.color = "var(--text-light)";
-    }
-
-    await fetch('/api/mode', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({active: isActive})
-    });
-});
-
-// Cambia rango del gráfico
-document.querySelectorAll('.range-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-        document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
-        e.target.classList.add('active');
-        currentInterval = e.target.dataset.range;
-        fetchChartData();
-    });
-});
 
 function initChart() {
     const ctx = document.getElementById('btcChart').getContext('2d');
@@ -48,7 +17,8 @@ function initChart() {
                     tension: 0.1,
                     pointRadius: 0,
                     pointHoverRadius: 4,
-                    fill: false
+                    fill: false,
+                    order: 2
                 },
                 {
                     label: 'Predicción IA',
@@ -59,7 +29,32 @@ function initChart() {
                     tension: 0.2,
                     pointRadius: 0,
                     pointHoverRadius: 4,
-                    fill: false
+                    fill: false,
+                    order: 1
+                },
+                {
+                    // Banda Superior
+                    label: 'Banda Superior',
+                    data: [],
+                    borderColor: 'transparent',
+                    backgroundColor: 'rgba(14, 203, 129, 0.1)', // Se actualizará color dinámicamente
+                    fill: '+1', // Rellena hasta el siguiente dataset (banda inferior)
+                    pointRadius: 0,
+                    pointHoverRadius: 0,
+                    order: 3,
+                    tension: 0.2
+                },
+                {
+                    // Banda Inferior
+                    label: 'Banda Inferior',
+                    data: [],
+                    borderColor: 'transparent',
+                    backgroundColor: 'transparent',
+                    fill: false,
+                    pointRadius: 0,
+                    pointHoverRadius: 0,
+                    order: 4,
+                    tension: 0.2
                 }
             ]
         },
@@ -68,7 +63,10 @@ function initChart() {
             maintainAspectRatio: false,
             interaction: { mode: 'index', intersect: false },
             plugins: {
-                legend: { position: 'top', align: 'end' },
+                legend: {
+                    position: 'top', align: 'end',
+                    labels: { filter: function(item, chart) { return !item.text.includes('Banda'); } }
+                },
                 tooltip: {
                     callbacks: {
                         title: (context) => {
@@ -76,6 +74,7 @@ function initChart() {
                             return date.toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
                         },
                         label: (context) => {
+                            if(context.dataset.label.includes('Banda')) return null; // No mostrar las bandas en el tooltip
                             return `${context.dataset.label}: $${context.parsed.y.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}`;
                         }
                     }
@@ -121,57 +120,67 @@ function initChart() {
     });
 }
 
-function updateChart(chartDataRaw) {
-    if (!chartInstance || !chartDataRaw || !chartDataRaw.history) return;
-
-    const histPrices = chartDataRaw.history.prices;
-    const histTimes = chartDataRaw.history.times;
-    const predPrices = chartDataRaw.prediction.prices;
-    const predTimes = chartDataRaw.prediction.times;
+function updateChart(histData, predData) {
+    if (!chartInstance || !histData || !histData.prices || histData.prices.length === 0) return;
 
     const realDataFormatted = [];
     const predDataFormatted = [];
+    const upperDataFormatted = [];
+    const lowerDataFormatted = [];
 
-    for (let i = 0; i < histPrices.length; i++) {
-        realDataFormatted.push({ x: histTimes[i], y: histPrices[i] });
+    // Cargar Histórico
+    for (let i = 0; i < histData.prices.length; i++) {
+        realDataFormatted.push({ x: histData.times[i], y: histData.prices[i] });
     }
 
-    if (predPrices && predTimes && predPrices.length > 0) {
-        const lastRealPoint = realDataFormatted[realDataFormatted.length - 1];
-        predDataFormatted.push({ x: lastRealPoint.x, y: lastRealPoint.y });
+    const lastRealPoint = realDataFormatted[realDataFormatted.length - 1];
 
-        for (let i = 0; i < predPrices.length; i++) {
-            if (i < predTimes.length) {
-                predDataFormatted.push({ x: predTimes[i], y: predPrices[i] });
+    // Cargar Predicción y Bandas
+    if (predData && predData.prices && predData.prices.length > 0) {
+        predDataFormatted.push({ x: lastRealPoint.x, y: lastRealPoint.y });
+        upperDataFormatted.push({ x: lastRealPoint.x, y: lastRealPoint.y });
+        lowerDataFormatted.push({ x: lastRealPoint.x, y: lastRealPoint.y });
+
+        for (let i = 0; i < predData.prices.length; i++) {
+            if (i < predData.times.length) {
+                const t = predData.times[i];
+                predDataFormatted.push({ x: t, y: predData.prices[i] });
+                upperDataFormatted.push({ x: t, y: predData.upper_bound[i] });
+                lowerDataFormatted.push({ x: t, y: predData.lower_bound[i] });
             }
         }
 
         const currentPrice = lastRealPoint.y;
-        const endPrice = predPrices[predPrices.length - 1];
-        chartInstance.data.datasets[1].borderColor = (endPrice < currentPrice) ? '#f6465d' : '#0ecb81';
+        const endPrice = predData.prices[predData.prices.length - 1];
+        const isBullish = endPrice >= currentPrice;
+
+        chartInstance.data.datasets[1].borderColor = isBullish ? '#0ecb81' : '#f6465d';
+        chartInstance.data.datasets[2].backgroundColor = isBullish ? 'rgba(14, 203, 129, 0.1)' : 'rgba(246, 70, 93, 0.1)';
     }
 
-    const nowTime = realDataFormatted.length > 0 ? realDataFormatted[realDataFormatted.length - 1].x : Date.now();
+    const nowTime = lastRealPoint.x;
     chartInstance.options.plugins.annotation.annotations.nowLine.xMin = nowTime;
     chartInstance.options.plugins.annotation.annotations.nowLine.xMax = nowTime;
 
     chartInstance.data.datasets[0].data = realDataFormatted;
     chartInstance.data.datasets[1].data = predDataFormatted;
+    chartInstance.data.datasets[2].data = upperDataFormatted;
+    chartInstance.data.datasets[3].data = lowerDataFormatted;
+
     chartInstance.update();
 }
 
 function updateUI(data) {
-    // Top Info
-    document.getElementById('marketStateTag').innerText = data.market_state || "Evaluando";
+    if (!data.precio_actual || data.precio_actual === 0) return; // Evitar renderizar vacíos
 
     // KPIs Básicos
     document.getElementById('kpiPrice').innerText = `$${data.precio_actual.toLocaleString('en-US')}`;
 
-    // Decisión (Coloreado dinámico del fondo de la tarjeta)
     const kpiSigCard = document.getElementById('kpiSignalCard');
     const kpiSig = document.getElementById('kpiSignal');
     kpiSig.innerText = data.decision;
     kpiSigCard.className = 'kpi-card'; // Reset
+
     if(data.decision === 'BUY') {
         kpiSigCard.classList.add('bg-buy');
         kpiSig.className = 'text-success';
@@ -184,42 +193,20 @@ function updateUI(data) {
     }
     document.getElementById('kpiConf').innerText = `Confianza: ${(data.confianza * 100).toFixed(0)}%`;
 
-    // IA Precisión Simple
     if (data.ia_metrics) {
         document.getElementById('kpiAcc').innerText = `${data.ia_metrics.accuracy}%`;
-        document.getElementById('kpiTotalSamples').innerText = `De ${data.ia_metrics.total} predicciones`;
+        document.getElementById('kpiTotalSamples').innerText = `Basado en ${data.ia_metrics.total} eval.`;
     }
 
-    // Razón IA explicada
     document.getElementById('decisionExp').innerText = data.explicacion;
 
-    // Simulador y Cartera
+    // Cartera y Operaciones
     if (data.balance) {
-        // Solo mostrar la tarjeta de balance si el simulador está activo o tiene saldo alterado
-        const balanceCard = document.getElementById('kpiBalanceCard');
-        if(data.balance.mode_active || data.balance.profit_loss !== 0) {
-            balanceCard.style.display = 'block';
-            document.getElementById('kpiBalance').innerText = `$${data.balance.total_value.toLocaleString('en-US', {minimumFractionDigits:2})}`;
+        document.getElementById('kpiBalance').innerText = `$${data.balance.total_value.toLocaleString('en-US', {minimumFractionDigits:2})}`;
+        const pnlEl = document.getElementById('kpiPnl');
+        pnlEl.innerText = `${data.balance.profit_loss >= 0 ? '+' : ''}$${data.balance.profit_loss.toLocaleString('en-US', {minimumFractionDigits:2})}`;
+        pnlEl.className = data.balance.profit_loss >= 0 ? 'text-success' : 'text-danger';
 
-            const pnlEl = document.getElementById('kpiPnl');
-            pnlEl.innerText = `${data.balance.profit_loss >= 0 ? '+' : ''}$${data.balance.profit_loss.toLocaleString('en-US', {minimumFractionDigits:2})}`;
-            pnlEl.className = data.balance.profit_loss >= 0 ? 'text-success' : 'text-danger';
-        } else {
-            balanceCard.style.display = 'none';
-        }
-
-        // Sincronizar el toggle visual
-        document.getElementById('modeToggle').checked = data.balance.mode_active;
-        const label = document.getElementById('modeLabelText');
-        if(data.balance.mode_active) {
-            label.innerText = "Modo Activo (Usando cartera virtual)";
-            label.style.color = "var(--success)";
-        } else {
-            label.innerText = "Modo Observación (La IA solo analiza)";
-            label.style.color = "var(--text-muted)";
-        }
-
-        // Tabla Dinámica o Empty State
         const emptyState = document.getElementById('emptyStateMsg');
         const historyContainer = document.getElementById('historyContainer');
         const tbody = document.getElementById('historyBody');
@@ -229,7 +216,6 @@ function updateUI(data) {
             historyContainer.style.display = 'block';
 
             tbody.innerHTML = '';
-            // Mostrar últimas 10
             const recentOps = data.balance.history.slice(0, 10);
             recentOps.forEach(op => {
                 const tr = document.createElement('tr');
@@ -246,17 +232,10 @@ function updateUI(data) {
             historyContainer.style.display = 'none';
         }
     }
-}
 
-async function fetchChartData() {
-    try {
-        const res = await fetch(`/api/chart?interval=${currentInterval}`);
-        if (res.ok) {
-            const data = await res.json();
-            window.lastChartData = data;
-            updateChart(data);
-        }
-    } catch(e) {}
+    if(data.chart_data) {
+        updateChart(data.chart_data.history, data.chart_data.prediction);
+    }
 }
 
 async function fetchData() {
@@ -265,19 +244,14 @@ async function fetchData() {
         if (response.ok) {
             const data = await response.json();
             updateUI(data);
-            if (window.lastChartData) {
-                // Actualizamos las predicciones futuras sobre el gráfico base
-                window.lastChartData.prediction.prices = data.prediccion_horas;
-                updateChart(window.lastChartData);
-            }
         }
-    } catch (error) {}
+    } catch (error) {
+        console.error("Error obteniendo datos API:", error);
+    }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
     initChart();
-    fetchChartData();
-    fetchData();
-    setInterval(fetchData, 5000);
-    setInterval(fetchChartData, 15000);
+    fetchData(); // Carga inicial
+    setInterval(fetchData, 5000); // Refresco constante
 });

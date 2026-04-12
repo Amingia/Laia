@@ -25,16 +25,6 @@ body {
 .nav-brand { font-size: 1.4rem; font-weight: 600; display: flex; align-items: center; gap: 10px; }
 .nav-controls { display: flex; align-items: center; gap: 20px; }
 
-/* Toggle */
-.mode-switch { display: flex; align-items: center; gap: 12px; font-size: 0.95rem; color: var(--text-light); font-weight: 500;}
-.mode-label { transition: color 0.3s; }
-.switch { position: relative; display: inline-block; width: 44px; height: 24px; }
-.switch input { opacity: 0; width: 0; height: 0; }
-.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--bg-elevated); transition: .4s; border-radius: 34px; }
-.slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
-input:checked + .slider { background-color: var(--success); }
-input:checked + .slider:before { transform: translateX(20px); }
-
 .status-indicator { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
 .status-indicator.live { background-color: var(--success); box-shadow: 0 0 8px var(--success); }
 
@@ -63,10 +53,11 @@ input:checked + .slider:before { transform: translateX(20px); }
 
 /* Gráfico */
 .main-chart { display: flex; flex-direction: column; }
-.chart-header { display: flex; justify-content: flex-end; align-items: center; margin-bottom: 10px;}
-.chart-filters { display: flex; gap: 5px; background: var(--bg-elevated); padding: 4px; border-radius: 6px; }
-.range-btn { background: transparent; border: none; color: var(--text-muted); padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: 500;}
-.range-btn.active { background: var(--bg-panel); color: var(--text-light); }
+.chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;}
+.chart-header h2 { margin: 0; font-size: 1.2rem; font-weight: 500; }
+.chart-filters { display: flex; align-items: center; background: transparent; padding: 4px; border-radius: 6px; }
+.range-label { color: var(--text-muted); font-size: 0.9rem; font-weight: 500; }
+
 .chart-container { position: relative; height: 550px; width: 100%; flex-grow: 1; }
 
 /* Panel Lateral */
@@ -76,8 +67,8 @@ input:checked + .slider:before { transform: translateX(20px); }
 .text-warning { color: var(--warning) !important; }
 
 /* Tabla Operations y Empty State */
-.empty-state { text-align: center; padding: 30px 10px; color: var(--text-muted); }
-.empty-state i { font-size: 2rem; margin-bottom: 15px; opacity: 0.5; }
+.empty-state { text-align: center; padding: 40px 10px; color: var(--text-muted); }
+.empty-state i { font-size: 2.5rem; margin-bottom: 15px; opacity: 0.4; }
 .empty-state p { font-size: 0.95rem; line-height: 1.5; margin: 0; }
 
 .small-table { max-height: 350px; overflow-y: auto; }

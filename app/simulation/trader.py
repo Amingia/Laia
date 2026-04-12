@@ -12,15 +12,11 @@ class TradingSimulator:
         self.total_fees_paid = 0.0
         self.average_buy_price = 0.0
 
-        # Modo activo (True) vs Observación (False)
-        self.is_active = False
+        # Modo activo (True) SIEMPRE en V7
+        self.is_active = True
 
-        # Operaciones del día
         self.today = date.today()
         self.trades_today = 0
-
-    def set_mode(self, is_active):
-        self.is_active = is_active
 
     def _check_new_day(self):
         current = date.today()
@@ -29,10 +25,6 @@ class TradingSimulator:
             self.trades_today = 0
 
     def process_signal(self, action, price, timestamp):
-        # Si estamos en modo observación, no hacemos nada con la cartera real (simulada)
-        if not self.is_active:
-            return
-
         self._check_new_day()
 
         if self.last_action_time and (timestamp - self.last_action_time).total_seconds() < self.cooldown_seconds:
@@ -47,7 +39,6 @@ class TradingSimulator:
 
             btc_bought = net_amount / price
 
-            # Recalcular precio medio de compra
             total_btc_cost = (self.average_buy_price * self.btc) + amount_to_spend
             self.usd -= amount_to_spend
             self.btc += btc_bought
@@ -76,7 +67,7 @@ class TradingSimulator:
             self.usd += net_receive
             btc_sold = self.btc
             self.btc = 0
-            self.average_buy_price = 0.0 # Reset
+            self.average_buy_price = 0.0
 
             self.total_fees_paid += fee
             trade_executed = True
@@ -94,7 +85,7 @@ class TradingSimulator:
         if trade_executed:
             self.last_action_time = timestamp
             self.trades_today += 1
-            if len(self.history) > 30: # Guardar hasta 30 operaciones para los gráficos
+            if len(self.history) > 30:
                 self.history.pop()
 
     def get_portfolio_value(self, current_price):
@@ -107,7 +98,6 @@ class TradingSimulator:
         profit_loss = total_value - self.initial_usd
         profit_percent = (profit_loss / self.initial_usd) * 100
 
-        # Rentabilidad de la posición abierta actual
         open_pnl = 0.0
         open_pnl_pct = 0.0
         if self.btc > 0 and self.average_buy_price > 0:

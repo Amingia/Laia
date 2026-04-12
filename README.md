@@ -1,17 +1,18 @@
-# 🚀 IA Bitcoin Predictor & Auto-Trader Pro v6
+# 🚀 IA Bitcoin Predictor & Auto-Trader Pro v7
 
-¡Bienvenido a la versión definitiva v6! Este programa es una herramienta profesional impulsada por Inteligencia Artificial que analiza el mercado de Bitcoin en tiempo real **usando datos oficiales de Binance**, realiza predicciones a futuro y simula estrategias de trading automáticas en **Dólares (USD)**.
+¡Bienvenido a la versión definitiva v7! Este programa es una herramienta profesional impulsada por Inteligencia Artificial que analiza el mercado de Bitcoin en tiempo real **usando datos oficiales de Binance**, realiza predicciones a futuro y simula estrategias de trading automáticas en **Dólares (USD)**.
 
 ---
 
-## 🌟 Novedades V6 - Menos ruido, Más claridad
+## 🌟 Novedades V7 - Simplicidad y Credibilidad
 
-En esta versión hemos eliminado todo lo que no aportaba valor inmediato y nos hemos centrado en hacer la interfaz **extremadamente clara y fácil de entender en 3 segundos.**
+En esta versión hemos eliminado todo lo que no aportaba valor inmediato, los controles manuales confusos y nos hemos centrado en hacer la interfaz **extremadamente clara y fácil de entender.**
 
-*   **📈 El Gráfico es el Rey:** Ocupa el 75% de la pantalla. Un eje temporal real y continuo que te muestra la línea amarilla (pasado en Binance) y la punteada (hacia dónde la IA cree que irá). Separadas visualmente por la línea "AHORA".
-*   **🤖 Modos Claros y Explicados:** Por defecto el sistema está en "Modo Observación (La IA solo analiza)". Puedes activarlo desde el botón superior derecho, momento en el que empezará a usar tu Cartera Virtual de $1000.
-*   **🧠 Decisiones Naturales:** La IA ahora te explica con una frase directa en español por qué recomienda Comprar, Vender o Mantener. No hay métricas técnicas confusas, solo un `% de Acierto` global.
-*   **🗑️ Tablas Inteligentes:** Si la IA no ha encontrado ninguna oportunidad de mercado buena, la tabla de operaciones no aparecerá vacía aburriendo la pantalla. En su lugar verás un mensaje amigable indicando que el sistema está a la espera.
+*   **📈 Gráfico Evolutivo con Banda de Confianza:** El gráfico principal ahora es un eje temporal continuo de 1 hora. Podrás ver en horas exactas el histórico y cómo se proyecta el futuro en una curva suave y realista. ¡Además! Ahora incluye una zona sombreada verde/roja que indica la **"Banda de Confianza"**. (Banda ancha = mercado volátil, baja confianza; Banda estrecha = mercado predecible, alta confianza).
+*   **🤖 Simulador Automático Inteligente:** Sin botones ni modos extraños. El sistema opera tu Cartera Virtual de $1000 automáticamente de fondo solo cuando la matemática de la red neuronal confirma que hay una oportunidad real (>1% de ganancia proyectada).
+*   **🧠 Métricas Reales de IA (Persistentes):** Ahora sabrás de verdad si la IA es buena. El sistema guarda estadísticas aunque lo cierres (`stats.json`), mostrándote tu Porcentaje de Acierto real.
+*   **🧠 IA Más Robusta y Anti-Ruido:** El motor de predicción usa cálculo de "Aceleración" de mercado, y solo opera si las medias móviles, el momentum, y la proyección futura le dan la razón. Evita operar en mercados laterales o estancados.
+*   **🖥️ Dashboard Limpio y Enocado:** Hemos eliminado paneles inútiles ("Estado de la Cartera"). Ahora toda tu atención va al gráfico principal, a las métricas directas superiores (KPIs) y a la explicación en español natural de por qué la IA toma una decisión.
 
 ---
 
@@ -43,4 +44,4 @@ Solo necesitas tener instalado **Python**.
 ---
 
 **¡Aviso Legal!**
-*Este software es educativo y de simulación algorítmica. NO DEBE utilizarse para operar dinero real sin supervisión ni adaptaciones avanzadas. El autor no se hace responsable de pérdidas financieras.*
+*Este software es educativo y de simulación algorítmica. NO DEBE utilizarse para operar dinero real sin supervisión ni adaptaciones avanzadas. El autor no se hace responsable de pérdidas financieras derivadas del uso de este algoritmo.*
