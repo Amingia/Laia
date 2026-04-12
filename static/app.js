@@ -10,7 +10,7 @@ function initChart() {
         data: {
             datasets: [
                 {
-                    label: 'Histórico (Real)',
+                    label: 'Histórico (Binance)',
                     data: [],
                     borderColor: '#fcd535',
                     borderWidth: 2,
@@ -21,32 +21,30 @@ function initChart() {
                     order: 2
                 },
                 {
-                    label: 'Predicción IA',
+                    label: 'Proyección IA',
                     data: [],
                     borderColor: '#0ecb81',
-                    borderDash: [5, 5],
+                    borderDash: [4, 4],
                     borderWidth: 2,
-                    tension: 0.2,
+                    tension: 0.4, // Curva suavizada y realista
                     pointRadius: 0,
                     pointHoverRadius: 4,
                     fill: false,
                     order: 1
                 },
                 {
-                    // Banda Superior
-                    label: 'Banda Superior',
+                    label: 'Límite Superior',
                     data: [],
                     borderColor: 'transparent',
-                    backgroundColor: 'rgba(14, 203, 129, 0.1)', // Se actualizará color dinámicamente
-                    fill: '+1', // Rellena hasta el siguiente dataset (banda inferior)
+                    backgroundColor: 'rgba(14, 203, 129, 0.1)', // Sombreado
+                    fill: '+1',
                     pointRadius: 0,
                     pointHoverRadius: 0,
                     order: 3,
-                    tension: 0.2
+                    tension: 0.4
                 },
                 {
-                    // Banda Inferior
-                    label: 'Banda Inferior',
+                    label: 'Límite Inferior',
                     data: [],
                     borderColor: 'transparent',
                     backgroundColor: 'transparent',
@@ -54,7 +52,7 @@ function initChart() {
                     pointRadius: 0,
                     pointHoverRadius: 0,
                     order: 4,
-                    tension: 0.2
+                    tension: 0.4
                 }
             ]
         },
@@ -63,18 +61,23 @@ function initChart() {
             maintainAspectRatio: false,
             interaction: { mode: 'index', intersect: false },
             plugins: {
-                legend: {
-                    position: 'top', align: 'end',
-                    labels: { filter: function(item, chart) { return !item.text.includes('Banda'); } }
-                },
+                legend: { display: false }, // Ocultamos la nativa porque hicimos una HTML custom
                 tooltip: {
+                    backgroundColor: 'rgba(24, 26, 32, 0.95)',
+                    titleColor: '#eaecef',
+                    bodyColor: '#eaecef',
+                    borderColor: '#2b3139',
+                    borderWidth: 1,
+                    padding: 12,
+                    titleFont: { size: 13, weight: 'normal' },
+                    bodyFont: { size: 14, weight: 'bold' },
                     callbacks: {
                         title: (context) => {
                             const date = new Date(context[0].parsed.x);
-                            return date.toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+                            return date.toLocaleString('es-ES', { weekday: 'long', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
                         },
                         label: (context) => {
-                            if(context.dataset.label.includes('Banda')) return null; // No mostrar las bandas en el tooltip
+                            if(context.dataset.label.includes('Límite')) return null; // No saturar el tooltip
                             return `${context.dataset.label}: $${context.parsed.y.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}`;
                         }
                     }
@@ -85,16 +88,17 @@ function initChart() {
                             type: 'line',
                             xMin: Date.now(),
                             xMax: Date.now(),
-                            borderColor: 'rgba(255, 255, 255, 0.4)',
-                            borderWidth: 1,
-                            borderDash: [3, 3],
+                            borderColor: 'rgba(255, 255, 255, 0.5)',
+                            borderWidth: 1.5,
+                            borderDash: [4, 4],
                             label: {
                                 display: true,
-                                content: 'AHORA',
-                                position: 'end',
-                                backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                                color: '#fff',
-                                font: { size: 10 }
+                                content: 'PRECIO ACTUAL',
+                                position: 'start',
+                                backgroundColor: 'rgba(43, 49, 57, 0.8)',
+                                color: '#eaecef',
+                                font: { size: 11, weight: 'bold' },
+                                yAdjust: 10
                             }
                         }
                     }
@@ -104,15 +108,19 @@ function initChart() {
                 x: {
                     type: 'time',
                     time: {
-                        displayFormats: { millisecond: 'HH:mm', second: 'HH:mm', minute: 'HH:mm', hour: 'HH:mm', day: 'MMM dd', week: 'MMM dd', month: 'MMM yyyy' }
+                        displayFormats: { hour: 'HH:mm', day: 'MMM dd' },
+                        tooltipFormat: 'dd MMM, HH:mm'
                     },
-                    grid: { color: '#2b3139', drawBorder: false },
-                    ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 10 }
+                    grid: { color: '#2b3139', drawBorder: false, tickLength: 0 },
+                    ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 12, font: {size: 11} }
                 },
                 y: {
-                    grid: { color: '#2b3139', drawBorder: false },
+                    grid: { color: '#1f2329', drawBorder: false },
                     position: 'right',
-                    ticks: { callback: function(value) { return '$' + value.toLocaleString('en-US'); } }
+                    ticks: {
+                        font: {size: 11},
+                        callback: function(value) { return '$' + value.toLocaleString('en-US'); }
+                    }
                 }
             },
             animation: { duration: 0 }
@@ -128,18 +136,26 @@ function updateChart(histData, predData) {
     const upperDataFormatted = [];
     const lowerDataFormatted = [];
 
-    // Cargar Histórico
-    for (let i = 0; i < histData.prices.length; i++) {
+    // Cargar Histórico (Últimos 48 puntos para mejor foco visual)
+    const viewLimit = 48;
+    const startIndex = Math.max(0, histData.prices.length - viewLimit);
+
+    for (let i = startIndex; i < histData.prices.length; i++) {
         realDataFormatted.push({ x: histData.times[i], y: histData.prices[i] });
     }
 
     const lastRealPoint = realDataFormatted[realDataFormatted.length - 1];
 
-    // Cargar Predicción y Bandas
+    // Cargar Predicción a futuro
     if (predData && predData.prices && predData.prices.length > 0) {
-        predDataFormatted.push({ x: lastRealPoint.x, y: lastRealPoint.y });
-        upperDataFormatted.push({ x: lastRealPoint.x, y: lastRealPoint.y });
-        lowerDataFormatted.push({ x: lastRealPoint.x, y: lastRealPoint.y });
+
+        // Empalmamos el punto actual exacto en la predicción y en las bandas de confianza para dar continuidad sin salto
+        const nowTime = lastRealPoint.x;
+        const nowPrice = lastRealPoint.y;
+
+        predDataFormatted.push({ x: nowTime, y: nowPrice });
+        upperDataFormatted.push({ x: nowTime, y: nowPrice });
+        lowerDataFormatted.push({ x: nowTime, y: nowPrice });
 
         for (let i = 0; i < predData.prices.length; i++) {
             if (i < predData.times.length) {
@@ -150,17 +166,21 @@ function updateChart(histData, predData) {
             }
         }
 
-        const currentPrice = lastRealPoint.y;
+        // El color de la predicción y su banda se ajusta dinámicamente si es subida o bajada a 24h
         const endPrice = predData.prices[predData.prices.length - 1];
-        const isBullish = endPrice >= currentPrice;
+        const isBullish = endPrice >= nowPrice;
 
         chartInstance.data.datasets[1].borderColor = isBullish ? '#0ecb81' : '#f6465d';
         chartInstance.data.datasets[2].backgroundColor = isBullish ? 'rgba(14, 203, 129, 0.1)' : 'rgba(246, 70, 93, 0.1)';
+
+        // Reflejar colores en la leyenda HTML Custom
+        document.querySelector('.color-box.pred').style.backgroundColor = isBullish ? '#0ecb81' : '#f6465d';
+        document.querySelector('.color-box.band').style.backgroundColor = isBullish ? 'rgba(14, 203, 129, 0.2)' : 'rgba(246, 70, 93, 0.2)';
+        document.querySelector('.color-box.band').style.borderColor = isBullish ? '#0ecb81' : '#f6465d';
     }
 
-    const nowTime = lastRealPoint.x;
-    chartInstance.options.plugins.annotation.annotations.nowLine.xMin = nowTime;
-    chartInstance.options.plugins.annotation.annotations.nowLine.xMax = nowTime;
+    chartInstance.options.plugins.annotation.annotations.nowLine.xMin = lastRealPoint.x;
+    chartInstance.options.plugins.annotation.annotations.nowLine.xMax = lastRealPoint.x;
 
     chartInstance.data.datasets[0].data = realDataFormatted;
     chartInstance.data.datasets[1].data = predDataFormatted;
@@ -171,68 +191,45 @@ function updateChart(histData, predData) {
 }
 
 function updateUI(data) {
-    if (!data.precio_actual || data.precio_actual === 0) return; // Evitar renderizar vacíos
+    if (!data.precio_actual || data.precio_actual === 0) return;
 
-    // KPIs Básicos
-    document.getElementById('kpiPrice').innerText = `$${data.precio_actual.toLocaleString('en-US')}`;
+    // Precio en vivo
+    document.getElementById('kpiPrice').innerText = `$${data.precio_actual.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
 
-    const kpiSigCard = document.getElementById('kpiSignalCard');
-    const kpiSig = document.getElementById('kpiSignal');
-    kpiSig.innerText = data.decision;
-    kpiSigCard.className = 'kpi-card'; // Reset
+    // Tarjeta Tendencia
+    const trendEl = document.getElementById('kpiTrend');
+    trendEl.innerText = data.tendencia || "Analizando...";
 
-    if(data.decision === 'BUY') {
-        kpiSigCard.classList.add('bg-buy');
-        kpiSig.className = 'text-success';
-    } else if(data.decision === 'SELL') {
-        kpiSigCard.classList.add('bg-sell');
-        kpiSig.className = 'text-danger';
+    if (data.tendencia && data.tendencia.includes("Alza") || data.tendencia.includes("Subida")) {
+        trendEl.className = 'text-success';
+    } else if (data.tendencia && data.tendencia.includes("Caída") || data.tendencia.includes("Bajada")) {
+        trendEl.className = 'text-danger';
     } else {
-        kpiSigCard.classList.add('bg-hold');
-        kpiSig.className = 'text-warning';
-    }
-    document.getElementById('kpiConf').innerText = `Confianza: ${(data.confianza * 100).toFixed(0)}%`;
-
-    if (data.ia_metrics) {
-        document.getElementById('kpiAcc').innerText = `${data.ia_metrics.accuracy}%`;
-        document.getElementById('kpiTotalSamples').innerText = `Basado en ${data.ia_metrics.total} eval.`;
+        trendEl.className = 'text-warning';
     }
 
-    document.getElementById('decisionExp').innerText = data.explicacion;
-
-    // Cartera y Operaciones
-    if (data.balance) {
-        document.getElementById('kpiBalance').innerText = `$${data.balance.total_value.toLocaleString('en-US', {minimumFractionDigits:2})}`;
-        const pnlEl = document.getElementById('kpiPnl');
-        pnlEl.innerText = `${data.balance.profit_loss >= 0 ? '+' : ''}$${data.balance.profit_loss.toLocaleString('en-US', {minimumFractionDigits:2})}`;
-        pnlEl.className = data.balance.profit_loss >= 0 ? 'text-success' : 'text-danger';
-
-        const emptyState = document.getElementById('emptyStateMsg');
-        const historyContainer = document.getElementById('historyContainer');
-        const tbody = document.getElementById('historyBody');
-
-        if (data.balance.history && data.balance.history.length > 0) {
-            emptyState.style.display = 'none';
-            historyContainer.style.display = 'block';
-
-            tbody.innerHTML = '';
-            const recentOps = data.balance.history.slice(0, 10);
-            recentOps.forEach(op => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${op.time}</td>
-                    <td class="${op.type.toLowerCase()}"><i class="fas ${op.type === 'COMPRA' ? 'fa-arrow-up' : 'fa-arrow-down'}"></i></td>
-                    <td>$${op.price.toLocaleString('en-US', {minimumFractionDigits: 0})}</td>
-                    <td class="${op.type.toLowerCase()}">${op.type === 'VENTA' ? '+' : '-'}$${op.amount_usd.toLocaleString('en-US', {maximumFractionDigits: 0})}</td>
-                `;
-                tbody.appendChild(tr);
-            });
-        } else {
-            emptyState.style.display = 'block';
-            historyContainer.style.display = 'none';
-        }
+    if (data.prediccion_24h_usd) {
+        document.getElementById('kpiPredPrice').innerText = `$${data.prediccion_24h_usd.toLocaleString('en-US', {minimumFractionDigits: 0})}`;
+        const pctEl = document.getElementById('kpiPredPct');
+        const pctVal = data.prediccion_24h_pct;
+        pctEl.innerText = `${pctVal >= 0 ? '+' : ''}${pctVal.toFixed(2)}%`;
+        pctEl.className = pctVal >= 0 ? 'text-success' : 'text-danger';
     }
 
+    // Validación Real (Excel)
+    if (data.evaluacion && data.evaluacion.total_evals > 0) {
+        document.getElementById('kpiAccEmpty').style.display = 'none';
+        document.getElementById('kpiAccData').style.display = 'block';
+
+        document.getElementById('kpiAccuracy').innerText = `${data.evaluacion.accuracy_pct}%`;
+        document.getElementById('kpiMae').innerText = `${data.evaluacion.mae_pct.toFixed(2)}%`;
+        document.getElementById('kpiEvals').innerText = data.evaluacion.total_evals;
+    } else {
+        document.getElementById('kpiAccEmpty').style.display = 'flex';
+        document.getElementById('kpiAccData').style.display = 'none';
+    }
+
+    // Actualizar gráfico
     if(data.chart_data) {
         updateChart(data.chart_data.history, data.chart_data.prediction);
     }
@@ -240,7 +237,7 @@ function updateUI(data) {
 
 async function fetchData() {
     try {
-        const response = await fetch('/api/auto');
+        const response = await fetch('/api/analysis');
         if (response.ok) {
             const data = await response.json();
             updateUI(data);
@@ -252,6 +249,7 @@ async function fetchData() {
 
 document.addEventListener('DOMContentLoaded', () => {
     initChart();
-    fetchData(); // Carga inicial
-    setInterval(fetchData, 5000); // Refresco constante
+    fetchData(); // Carga Inmediata
+    // Polling rápido: el backend también hace polling rápido a Binance y cacheadas las curvas. Esto da sensación de vivo extremo.
+    setInterval(fetchData, 2000);
 });

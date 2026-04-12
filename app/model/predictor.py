@@ -1,138 +1,104 @@
 from sklearn.ensemble import RandomForestRegressor
 import numpy as np
-import json
-import os
-import time
-from app.data.fetcher import calculate_features
+from app.data.fetcher import calculate_advanced_features
 
-STATS_FILE = "stats.json"
-
-class Predictor:
+class AnalyticsPredictor:
     def __init__(self):
-        # Mayor min_samples_leaf para suavizar más la curva y evitar saltos nerviosos
-        self.model = RandomForestRegressor(n_estimators=200, max_depth=8, min_samples_leaf=5, random_state=42)
+        # RandomForest más denso y estable para análisis de serie temporal
+        self.model = RandomForestRegressor(n_estimators=300, max_depth=10, min_samples_leaf=4, random_state=42)
         self.is_trained = False
-        self.last_prediction = None
-        self.correction_factor = 1.0
-        self.stats = self.load_stats()
         self.last_real_price = None
+        self.last_prediction_array = []
 
-    def load_stats(self):
-        default = {
-            "total_predictions": 0,
-            "correct_directions": 0,
-        }
-        if os.path.exists(STATS_FILE):
-            try:
-                with open(STATS_FILE, "r") as f:
-                    data = json.load(f)
-                    return {
-                        "total_predictions": data.get("total_predictions", 0),
-                        "correct_directions": data.get("correct_directions", 0)
-                    }
-            except:
-                return default
-        return default
+    def train(self, prices, volumes=None):
+        if len(prices) < 48: # Necesitamos histórico decente para features
+            return False
 
-    def save_stats(self):
-        with open(STATS_FILE, "w") as f:
-            json.dump(self.stats, f)
-
-    def train(self, prices):
-        if len(prices) < 24:
-            return
         X, y = [], []
-        window = 5
-        for i in range(len(prices) - window):
+        window = 14 # 14 Horas previas como marco de entrada
+
+        for i in range(len(prices) - window - 24): # Entrenar prediciendo el futuro real
             window_prices = prices[i:i+window]
-            volatility, momentum, sma_c, sma_m, acc = calculate_features(window_prices)
-            features = window_prices + [volatility, momentum, sma_c, acc]
+            window_vols = volumes[i:i+window] if volumes else None
+
+            vol, mom, sma_5, sma_14, acc, vol_r = calculate_advanced_features(window_prices, window_vols)
+
+            features = [
+                window_prices[-1], # Close price
+                window_prices[-1] - window_prices[-2], # Cambio 1h
+                vol, mom, sma_5, sma_14, acc, vol_r
+            ]
             X.append(features)
+
+            # Y es el precio a 1h vista de esa ventana (para modelo autoregresivo)
             y.append(prices[i+window])
 
         if len(X) > 0:
             self.model.fit(X, y)
             self.is_trained = True
+            return True
+        return False
 
-    def predict_next_24h(self, current_prices):
-        if not self.is_trained or len(current_prices) < 10:
-            last_price = current_prices[-1] if current_prices else 65000
-            return {
-                "prices": [last_price * (1 + np.random.normal(0, 0.0005)) for _ in range(24)],
-                "upper_bound": [last_price * 1.01 for _ in range(24)],
-                "lower_bound": [last_price * 0.99 for _ in range(24)]
-            }
+    def predict_next_24h(self, current_prices, current_volumes=None):
+        if not self.is_trained or len(current_prices) < 14:
+            return None
 
         predictions = []
         upper_bounds = []
         lower_bounds = []
 
-        window_data = current_prices[-10:].copy()
+        window_data = current_prices[-14:].copy()
+        window_vols = current_volumes[-14:].copy() if current_volumes else None
 
-        # Calcular volatilidad reciente real para la banda de confianza
-        volatility, _, _, _, _ = calculate_features(window_data)
+        # Volatilidad base para la banda de incertidumbre
+        volatility, _, _, _, _, _ = calculate_advanced_features(window_data, window_vols)
+        base_uncertainty = max(0.002, volatility / 100) # Mínimo 0.2% de incertidumbre
 
-        # Volatilidad alta (ej: > 2%) significa una banda más ancha (menor confianza)
-        # Volatilidad baja (ej: < 0.5%) significa banda más estrecha (mayor confianza)
-        vol_factor = max(0.001, volatility / 100)
+        # Guardamos el primer punto como el actual para continuidad perfecta
+        predictions.append(current_prices[-1])
+        upper_bounds.append(current_prices[-1])
+        lower_bounds.append(current_prices[-1])
 
-        for i in range(24):
-            vol, mom, sma_c, sma_m, acc = calculate_features(window_data)
-            features = window_data[-5:] + [vol, mom, sma_c, acc]
+        for i in range(24): # 24 predicciones futuras
+            vol, mom, sma_5, sma_14, acc, vol_r = calculate_advanced_features(window_data, window_vols)
 
-            base_pred = self.model.predict([features])[0]
-            corrected_pred = base_pred * self.correction_factor
+            features = [
+                window_data[-1],
+                window_data[-1] - window_data[-2],
+                vol, mom, sma_5, sma_14, acc, vol_r
+            ]
 
-            # Curva suavizada: Menos ruido artificial, más confianza en el modelo
-            noise = np.random.normal(0, vol_factor * 0.1) # Muy poco ruido extra para continuidad real
-            final_pred = corrected_pred * (1 + noise)
+            # Predicción cruda del modelo
+            raw_pred = self.model.predict([features])[0]
 
-            # Cálculo de la banda de confianza que se va abriendo levemente con el tiempo (incertidumbre futura)
-            uncertainty_multiplier = 1 + (i * 0.05) # Va aumentando un 5% cada hora
-            upper = final_pred * (1 + (vol_factor * uncertainty_multiplier * 5))
-            lower = final_pred * (1 - (vol_factor * uncertainty_multiplier * 5))
+            # Suavizado de curva: El modelo autoregresivo puro tiende a rebotar si hay mucho ruido.
+            # Combinamos la predicción con el momentum reciente para que la curva tenga inercia natural.
+            momentum_factor = 1 + (mom / 1000) # Muy ligero impacto direccional
+            smooth_pred = raw_pred * momentum_factor
 
-            predictions.append(final_pred)
+            # Cálculo de Banda de Confianza (Se ensancha cuanto más nos alejamos en el tiempo)
+            hour_multiplier = 1 + (i * 0.05) # Aumenta un 5% de incertidumbre cada hora proyectada
+            current_uncertainty = base_uncertainty * hour_multiplier
+
+            upper = smooth_pred * (1 + current_uncertainty)
+            lower = smooth_pred * (1 - current_uncertainty)
+
+            predictions.append(smooth_pred)
             upper_bounds.append(upper)
             lower_bounds.append(lower)
 
             window_data.pop(0)
-            window_data.append(final_pred)
+            window_data.append(smooth_pred)
 
-        self.last_prediction = predictions[0]
+            if window_vols:
+                window_vols.pop(0)
+                window_vols.append(window_vols[-1]) # Simulamos volumen constante en el futuro
+
+        self.last_prediction_array = predictions
         self.last_real_price = current_prices[-1]
 
         return {
             "prices": predictions,
             "upper_bound": upper_bounds,
             "lower_bound": lower_bounds
-        }
-
-    def update_correction(self, actual_price):
-        if self.last_prediction is not None and self.last_real_price is not None and actual_price > 0:
-            predicted_direction = self.last_prediction - self.last_real_price
-            actual_direction = actual_price - self.last_real_price
-
-            if predicted_direction != 0 and actual_direction != 0:
-                self.stats["total_predictions"] += 1
-
-                if (predicted_direction > 0 and actual_direction > 0) or (predicted_direction < 0 and actual_direction < 0):
-                    self.stats["correct_directions"] += 1
-                    self.correction_factor += (1.0 - self.correction_factor) * 0.05
-                else:
-                    error_pct = (actual_price - self.last_prediction) / self.last_prediction
-                    multiplier = 0.5 if abs(error_pct) > 0.01 else 0.2
-                    self.correction_factor += error_pct * multiplier
-
-                self.save_stats()
-
-        self.correction_factor = max(0.95, min(1.05, self.correction_factor))
-
-    def get_metrics(self):
-        total = self.stats["total_predictions"]
-        acc = (self.stats["correct_directions"] / total * 100) if total > 0 else 0.0
-
-        return {
-            "accuracy": round(acc, 1),
-            "total": total
         }

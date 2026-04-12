@@ -1,18 +1,19 @@
-# 🚀 IA Bitcoin Predictor & Auto-Trader Pro v7
+# 🚀 BTC Predictive Analytics v8
 
-¡Bienvenido a la versión definitiva v7! Este programa es una herramienta profesional impulsada por Inteligencia Artificial que analiza el mercado de Bitcoin en tiempo real **usando datos oficiales de Binance**, realiza predicciones a futuro y simula estrategias de trading automáticas en **Dólares (USD)**.
+¡Bienvenido a la versión definitiva v8! Esta plataforma es una herramienta **profesional y analítica** impulsada por Inteligencia Artificial diseñada exclusivamente para **predecir el movimiento del precio de Bitcoin en las próximas 24 horas**.
+
+No encontrarás aquí herramientas para "jugar a hacer trading", "simuladores" ni "carteras virtuales". Esto es una máquina de datos puros que utiliza un modelo **Random Forest Regressor** enriquecido con *Feature Engineering* (Momentum, Medias Móviles, Aceleración, Volatilidad y Volumen Real) sobre los datos en tiempo real de **Binance**.
 
 ---
 
-## 🌟 Novedades V7 - Simplicidad y Credibilidad
+## 🌟 Novedades V8 - Predicción Analítica Pura
 
-En esta versión hemos eliminado todo lo que no aportaba valor inmediato, los controles manuales confusos y nos hemos centrado en hacer la interfaz **extremadamente clara y fácil de entender.**
+En esta versión hemos transformado el proyecto:
 
-*   **📈 Gráfico Evolutivo con Banda de Confianza:** El gráfico principal ahora es un eje temporal continuo de 1 hora. Podrás ver en horas exactas el histórico y cómo se proyecta el futuro en una curva suave y realista. ¡Además! Ahora incluye una zona sombreada verde/roja que indica la **"Banda de Confianza"**. (Banda ancha = mercado volátil, baja confianza; Banda estrecha = mercado predecible, alta confianza).
-*   **🤖 Simulador Automático Inteligente:** Sin botones ni modos extraños. El sistema opera tu Cartera Virtual de $1000 automáticamente de fondo solo cuando la matemática de la red neuronal confirma que hay una oportunidad real (>1% de ganancia proyectada).
-*   **🧠 Métricas Reales de IA (Persistentes):** Ahora sabrás de verdad si la IA es buena. El sistema guarda estadísticas aunque lo cierres (`stats.json`), mostrándote tu Porcentaje de Acierto real.
-*   **🧠 IA Más Robusta y Anti-Ruido:** El motor de predicción usa cálculo de "Aceleración" de mercado, y solo opera si las medias móviles, el momentum, y la proyección futura le dan la razón. Evita operar en mercados laterales o estancados.
-*   **🖥️ Dashboard Limpio y Enocado:** Hemos eliminado paneles inútiles ("Estado de la Cartera"). Ahora toda tu atención va al gráfico principal, a las métricas directas superiores (KPIs) y a la explicación en español natural de por qué la IA toma una decisión.
+*   **📈 Tiempo Real "Real":** La conexión al mercado de Binance (BTCUSDT) es casi instantánea (polling agresivo optimizado de 2 segundos). Sentirás el sistema vivo.
+*   **🧠 Predicción Realista y Orgánica:** Atrás quedaron las predicciones "en línea recta". La IA ahora analiza 300 velas históricas e incorpora inercia de mercado, generando una curva de 24h suave que no da saltos bruscos al conectarse con el precio "AHORA".
+*   **📊 Banda de Incertidumbre:** La zona sombreada verde o roja que envuelve la predicción no es aleatoria. Se calcula matemáticamente basándose en la volatilidad real del precio. Si la banda es estrecha, el modelo está seguro; si se ensancha mucho, el mercado está loco.
+*   **📁 Validación Científica (Excel Automático):** La IA no solo dice hacia dónde irá el precio, sino que **se somete a examen**. El sistema guarda silenciosamente cada predicción en el archivo `predicciones.xlsx`. A medida que pasan las horas, anota el "Precio Real" que hubo y calcula el Porcentaje de Acierto y el Error Medio (MAE). Podrás ver la precisión real directamente en el Dashboard.
 
 ---
 
@@ -29,7 +30,7 @@ Solo necesitas tener instalado **Python**.
 ## ⚙️ Cómo Instalar
 
 1.  Haz doble clic en el archivo **`install.bat`**.
-2.  Una pantalla negra creará el entorno seguro y descargará las librerías necesarias sin que tengas que hacer nada.
+2.  Una pantalla negra creará el entorno seguro y descargará las librerías matemáticas (Pandas, Scikit-learn, Openpyxl...) necesarias sin que tengas que hacer nada.
 3.  Cuando veas "INSTALACION COMPLETADA CON EXITO", puedes pulsar cualquier tecla para cerrar.
     *Esto solo se hace la primera vez.*
 
@@ -38,10 +39,10 @@ Solo necesitas tener instalado **Python**.
 ## 🚀 Cómo Ejecutar
 
 1.  Haz doble clic en el archivo **`run.bat`**.
-2.  Mantén abierta la ventana negra que aparece. Es el motor de la IA corriendo de fondo.
+2.  Mantén abierta la ventana negra que aparece. Es el cerebro del evaluador corriendo de fondo y guardando datos en el Excel.
 3.  Abre tu navegador (Chrome, Edge...) y entra en: `http://localhost:8000`
 
 ---
 
 **¡Aviso Legal!**
-*Este software es educativo y de simulación algorítmica. NO DEBE utilizarse para operar dinero real sin supervisión ni adaptaciones avanzadas. El autor no se hace responsable de pérdidas financieras derivadas del uso de este algoritmo.*
+*Este software es una plataforma de análisis técnico predictivo. NO DEBE utilizarse para operar dinero real sin supervisión ni adaptaciones avanzadas. El autor no se hace responsable de pérdidas financieras derivadas del uso de este algoritmo.*
