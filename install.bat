@@ -1,7 +1,7 @@
 @echo off
 cd /d %~dp0
 echo ===================================================
-echo     Instalador IA Bitcoin Predictor ^& Trader Pro
+echo     Instalador BTC Predictive Analytics v12
 echo ===================================================
 echo.
 

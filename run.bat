@@ -1,7 +1,7 @@
 @echo off
 cd /d %~dp0
 echo ===================================================
-echo     Iniciando IA Bitcoin Predictor ^& Trader Pro...
+echo     Iniciando BTC Predictive Analytics v12...
 echo ===================================================
 echo.
 
@@ -13,11 +13,11 @@ IF NOT EXIST "venv\Scripts\activate.bat" (
 
 call venv\Scripts\activate.bat
 
-echo Arrancando el servidor local...
-echo La aplicacion estara disponible en http://localhost:8000
-echo Manten esta ventana abierta mientras uses la aplicacion.
-echo Presiona Ctrl+C para cerrar el servidor.
+echo Arrancando el motor analitico local...
+echo El servidor estara disponible en http://localhost:8000
+echo La primera carga tardara unos segundos mientras se analiza el mercado.
+echo Manten esta ventana abierta. Presiona Ctrl+C para cerrar.
 echo.
 
-python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
 pause

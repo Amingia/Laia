@@ -1,17 +1,18 @@
-# 🚀 BTC Predictive Analytics v11
+# 🚀 BTC Predictive Analytics v12
 
-¡Bienvenido a la versión definitiva v11! Esta plataforma es una herramienta **profesional y puramente analítica**, diseñada bajo el principio de "Cero Maquillaje". Su único objetivo es predecir el movimiento del precio de Bitcoin en el tiempo y demostrarte matemáticamente si la Inteligencia Artificial es superior a la Inercia del mercado.
+¡Bienvenido a la versión v12! Esta plataforma es una herramienta **profesional y analítica**, diseñada bajo el principio de "Cero Maquillaje" y purgada de cualquier elemento lúdico, falso o engañoso. Su único objetivo es predecir el movimiento del precio de Bitcoin proyectando sus inferencias de forma cruda, para demostrar matemáticamente si la Inteligencia Artificial es superior al mercado ciego o no.
 
 ---
 
-## 🌟 Novedades V11 - Saneamiento Total y Auditoría Constante
+## 🌟 Novedades V12 - Saneamiento Total y Auditoría Transparente
 
-En esta versión hemos eliminado todas las redundancias y dependencias pesadas (adiós a `pandas` y `openpyxl`) para construir el motor analítico definitivo:
+En esta versión hemos ejecutado una purga masiva del repositorio. Adiós dependencias infladas, adiós Excel, adiós "simuladores virtuales" y adiós curvas que se mueven de forma irreal hacia la izquierda.
 
-*   **🧠 Red Neuronal de Horizontes Múltiples:** La IA no predice usando curvas extrapoladas inventadas. Ahora usa 4 modelos Random Forest entrenados independientemente para predecir puntos exactos a +1h, +2h, +4h y +24h en el futuro.
-*   **📊 Gráfico Evolutivo Congelado (-168h a +24h):** El gráfico de análisis es estricto. A la izquierda verás 7 días completos de mercado con el precio histórico de Binance. A la derecha, los 4 nodos de predicción de la IA. El eje no resbala, no pierde contexto y no se deforma.
-*   **🧐 Auditoría Desglosada vs Baseline:** ¿Sirve de algo el modelo? En el panel derecho superior verás la comparación cara a cara del *Error Absoluto Medio (MAE)* de la IA frente al MAE de no hacer nada ("Baseline Naive"). **¡Ya no tienes que esperar 24 horas para ver resultados!** A la primera hora de uso, la tarjeta "despertará" para mostrarte el rendimiento del modelo +1H.
-*   **📁 Tracking Persistente y Nativo:** Los datos de evaluación interna se almacenan eficientemente en memoria mediante un archivo nativo ligero (`history.json`).
+*   **⏳ Warm-up Inteligente (Arranque Seguro):** Al arrancar, el servidor no te servirá una página rota ni "vacía". La API bloquea todas las conexiones hasta que la ingesta de las 168 horas históricas y el entrenamiento de los modelos estén garantizados.
+*   **🧠 Red Neuronal de Horizontes Múltiples:** La IA usa 4 modelos Random Forest entrenados independientemente para predecir puntos exactos a +1h, +2h, +4h y +24h.
+*   **📊 Gráfico Evolutivo de 192 Horas:** El eje X está **fijo y bloqueado**. A la izquierda, 168 horas de pasado real. A la derecha, 24 horas de futuro, trazando una interpolación matemática lineal (recta pura, no curvas falsas suavizadas) que conecta el AHORA exclusivamente con los cuatro anclajes predichos.
+*   **🧐 Auditoría Desglosada vs Baseline:** En la parte superior derecha verás la comparación cara a cara del *Error Medio (MAE)* de la IA frente al MAE de no hacer nada ("Baseline Naive"). **¡Ya no tienes que esperar 24 horas para ver resultados!** En cuanto pasa la primera hora, la tarjeta "+1h" despierta y te evalúa.
+*   **📁 Tracking Persistente y Nativo:** Los datos de evaluación interna se almacenan eficientemente en memoria mediante un archivo nativo ligero (`history.json`) que sobrevive entre reinicios.
 
 ---
 
@@ -29,15 +30,13 @@ Solo necesitas tener instalado **Python**.
 
 1.  Haz doble clic en el archivo **`install.bat`**.
 2.  Una pantalla negra creará el entorno seguro y descargará las librerías matemáticas estrictamente necesarias (`fastapi`, `uvicorn`, `scikit-learn`, `numpy`, `requests`).
-3.  Cuando veas "INSTALACION COMPLETADA CON EXITO", puedes pulsar cualquier tecla para cerrar.
-    *Esto solo se hace la primera vez.*
 
 ---
 
 ## 🚀 Cómo Ejecutar
 
 1.  Haz doble clic en el archivo **`run.bat`**.
-2.  Mantén abierta la ventana negra que aparece. Es el cerebro del evaluador corriendo de fondo, pidiendo datos a Binance cada segundo y validando su memoria.
+2.  Espera unos 5 segundos a que la consola negra inicie el "Warm-up" (carga de histórico y entrenamiento).
 3.  Abre tu navegador (Chrome, Edge...) y entra en: `http://localhost:8000`
 
 ---

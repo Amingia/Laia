@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BTC Analytics Predictor v11</title>
+    <title>BTC Predictive Analytics v12</title>
     <link rel="stylesheet" href="/static/style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.2.1/dist/chartjs-plugin-annotation.min.js"></script>
@@ -15,20 +15,23 @@
     <div class="top-nav">
         <div class="nav-brand">
             <i class="fab fa-bitcoin" style="color: #f7931a; font-size: 1.8rem;"></i>
-            <span>Laboratorio Analítico V11 (Cero Ruido)</span>
+            <span>BTC Predictive Analytics</span>
+            <small class="version-tag">V12 Saneada</small>
         </div>
         <div class="nav-controls">
-            <div class="nav-status">
-                <span class="status-indicator live"></span> Binance 1s Polling
+            <div class="nav-status" id="binanceStatus">
+                <span class="status-indicator warning"></span>
+                <span>Inicializando Sistema...</span>
             </div>
         </div>
     </div>
 
     <div class="container">
+        <!-- KPIs Analíticos Puros -->
         <div class="kpi-row">
             <!-- Precio en Vivo -->
             <div class="kpi-card live-price-card">
-                <span class="label">Precio BTC/USDT (Ahora)</span>
+                <span class="label">Precio BTC/USDT (Tiempo Real)</span>
                 <div class="price-container">
                     <h2 id="kpiPrice">Cargando...</h2>
                     <span class="pulsing-dot"></span>
@@ -38,7 +41,7 @@
             <!-- Proyección 24h -->
             <div class="kpi-card projection-card">
                 <span class="label">Proyección de Cierre a +24h</span>
-                <h3 id="kpiTrend">Evaluando...</h3>
+                <h3 id="kpiTrend" class="text-warning">Arrancando motor y bajando 168h...</h3>
                 <div class="metric-group">
                     <div class="metric">
                         <span class="metric-title">Objetivo Esperado</span>
@@ -46,7 +49,7 @@
                     </div>
                     <div class="metric">
                         <span class="metric-title">Delta</span>
-                        <strong id="kpiPredPct">--</strong>
+                        <strong id="kpiPredPct" class="text-muted">--</strong>
                     </div>
                 </div>
             </div>
@@ -84,26 +87,27 @@
 
                 <div id="kpiAccEmpty" class="empty-metrics">
                     <i class="fas fa-microscope"></i>
-                    <p>Esperando 1h desde el inicio para auditar la 1ª proyección.</p>
+                    <p id="auditEmptyMsg">Aún recopilando datos para el primer test (+1h).</p>
                 </div>
             </div>
         </div>
 
+        <!-- Dashboard Gráfico Transparente (7 Días + 24 Horas) -->
         <div class="dashboard">
             <div class="panel main-chart">
                 <div class="chart-header">
-                    <h2><i class="fas fa-chart-line"></i> Contexto Evolutivo (168h Pasado / 24h Proyección)</h2>
+                    <h2><i class="fas fa-chart-line"></i> Evolución y Predicción Interpolada (7 Días)</h2>
                     <div class="legend-info">
                         <span class="legend-item"><span class="color-box real"></span>Histórico Real</span>
-                        <span class="legend-item"><span class="color-box pred"></span>Nodos Predichos (+1,+2,+4,+24)</span>
-                        <span class="legend-item"><span class="color-box band"></span>Incertidumbre Empírica</span>
+                        <span class="legend-item"><span class="color-box pred"></span>IA (Nodos Ancla Destacados)</span>
+                        <span class="legend-item"><span class="color-box band"></span>Incertidumbre Volátil</span>
                     </div>
                 </div>
                 <div class="chart-container">
                     <canvas id="btcChart"></canvas>
                 </div>
                 <div class="chart-footer">
-                    <p><i class="fas fa-check-circle"></i> <strong>V11 Saneada:</strong> El gráfico nunca resbala. Siempre verás 7 días de pasado y las líneas rectas que unen el precio actual a los anclajes de IA evaluados en la tabla superior. Sin "curvas bonitas" engañosas.</p>
+                    <p><i class="fas fa-check-circle"></i> <strong>V12 Saneada:</strong> Gráfico estrictamente bloqueado para no perder perspectiva. A la izquierda, exactamente 168 horas de histórico (7 días). A la derecha, 24 horas proyectadas conectando de forma estricta los 4 puntos predichos por los modelos Random Forest separados (+1, +2, +4 y +24h).</p>
                 </div>
             </div>
         </div>

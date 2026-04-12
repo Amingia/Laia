@@ -24,9 +24,8 @@ class InternalValidator:
             try:
                 with open(self.filename, "r") as f:
                     data = json.load(f)
-                    # Saneamiento por si el json viene de la v10 (incompatible)
                     if "1h" not in data.get("metrics", {}):
-                        print("[Tracker] Estructura v10 detectada en history.json. Reiniciando a v11.")
+                        print("[Tracker] Estructura antigua detectada. Saneando history.json...")
                         return default
                     return data
             except Exception as e:
@@ -41,36 +40,35 @@ class InternalValidator:
         except Exception as e:
             print(f"[Tracker Error] No se pudo guardar history.json: {e}")
 
-    def record_new_prediction(self, current_price, predictions):
+    def record_new_prediction(self, current_price, predictions_obj):
+        """Graba una predicción si ha pasado más de 1 hora desde la última foto (3500s por seguridad de cron)"""
         now = time.time()
-        # Grabar una predicción cada hora (3500s de margen por si el cron baila un poco)
         if now - self.last_record_time < 3500:
             return
 
-        if not predictions:
+        if not predictions_obj:
             return
 
         record = {
             "ts": now,
             "current_price": round(current_price, 2),
-            "baseline": round(current_price, 2), # El baseline es el precio inalterado
-            "p_1h": round(predictions["p_1h"], 2), "r_1h": None,
-            "p_2h": round(predictions["p_2h"], 2), "r_2h": None,
-            "p_4h": round(predictions["p_4h"], 2), "r_4h": None,
-            "p_24h": round(predictions["p_24h"], 2), "r_24h": None
+            "baseline": round(current_price, 2),
+            "p_1h": round(predictions_obj["p_1h"], 2), "r_1h": None,
+            "p_2h": round(predictions_obj["p_2h"], 2), "r_2h": None,
+            "p_4h": round(predictions_obj["p_4h"], 2), "r_4h": None,
+            "p_24h": round(predictions_obj["p_24h"], 2), "r_24h": None
         }
 
         self.data["predictions"].append(record)
-        # Límite de seguridad para no explotar la RAM/JSON (ej. 100 horas de historial pendiente)
+        # Limite sano para RAM/Disco de 100 horas de historial flotante
         if len(self.data["predictions"]) > 100:
             self.data["predictions"].pop(0)
 
         self.last_record_time = now
         self._save_data()
-        print(f"[Tracker] Nueva foto de predicciones registrada. {len(self.data['predictions'])} en cola.")
+        print(f"[Auditoría] Snapshot de predicción guardada en log. {len(self.data['predictions'])} registros evaluándose.")
 
     def _evaluate_horizon(self, record, current_price, target_key, real_key, metrics_key):
-        """Evalúa un horizonte temporal específico y actualiza las métricas globales si no se había evaluado aún."""
         if record[real_key] is None:
             record[real_key] = round(current_price, 2)
 
@@ -87,33 +85,30 @@ class InternalValidator:
             self.data["metrics"][metrics_key]["mae_base"] += error_base
             self.data["metrics"][metrics_key]["evals"] += 1
 
-            print(f"[Tracker] Evaluación {metrics_key} completada. Error IA: {error_ai:.2f}% | Base: {error_base:.2f}%")
+            print(f"[Auditoría] Horizonte +{metrics_key} maduró. IA vs Base: {error_ai:.2f}% | {error_base:.2f}%")
             return True
         return False
 
     def update_actuals(self, current_price):
+        """Dispara evaluación si los timestamps han madurado (+1, +2, +4, +24)"""
         now = time.time()
         modified = False
 
         for record in self.data["predictions"]:
             time_passed = now - record["ts"]
 
-            # Evaluación Parcial +1h (A los 3600 segundos)
             if time_passed >= 3600 and time_passed < 7200:
                 if self._evaluate_horizon(record, current_price, "p_1h", "r_1h", "1h"):
                     modified = True
 
-            # Evaluación Parcial +2h (7200s)
             if time_passed >= 7200 and time_passed < 14400:
                 if self._evaluate_horizon(record, current_price, "p_2h", "r_2h", "2h"):
                     modified = True
 
-            # Evaluación Parcial +4h (14400s)
             if time_passed >= 14400 and time_passed < 86400:
                 if self._evaluate_horizon(record, current_price, "p_4h", "r_4h", "4h"):
                     modified = True
 
-            # Evaluación Final +24h (86400s)
             if time_passed >= 86400:
                 if self._evaluate_horizon(record, current_price, "p_24h", "r_24h", "24h"):
                     modified = True
@@ -122,11 +117,13 @@ class InternalValidator:
             self._save_data()
 
     def get_metrics(self):
-        """Devuelve el estado de la auditoría estructurado para la UI."""
+        """Devuelve desglose de auditoría por horizonte temporal y un resumen global"""
         results = {}
+        total_evals_global = 0
 
         for horizon, data in self.data["metrics"].items():
             total = data["evals"]
+            total_evals_global += total
             if total == 0:
                 results[horizon] = {"status": "pending", "evals": 0}
             else:
@@ -144,4 +141,5 @@ class InternalValidator:
                     "color": color
                 }
 
+        results["total_evals_global"] = total_evals_global
         return results
