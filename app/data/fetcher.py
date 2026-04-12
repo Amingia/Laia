@@ -2,8 +2,8 @@ import requests
 import random
 import numpy as np
 import time
+from datetime import datetime
 
-# Caché segmentada por intervalos de Binance
 _cache = {
     "current_price": {"value": None, "timestamp": 0},
     "history_15m": {"value": None, "timestamp": 0},
@@ -34,14 +34,9 @@ def get_current_price():
         return round(last_price * (1 + random.uniform(-0.001, 0.001)), 2) if last_price else 65000.0
 
 def get_historical_prices(interval="1h", limit=100):
-    """
-    Soporta: 15m, 1h, 4h, 1d.
-    La caché depende del intervalo para no pedir constantemente velas largas.
-    """
     cache_key = f"history_{interval}"
     current_time = time.time()
 
-    # TTL dinámico según intervalo
     ttl_map = {"15m": 60, "1h": 300, "4h": 600, "1d": 3600}
     ttl = ttl_map.get(interval, 300)
 
@@ -55,29 +50,30 @@ def get_historical_prices(interval="1h", limit=100):
         data = response.json()
 
         history = [float(k[4]) for k in data] # Precios de cierre
-        timestamps = [int(k[0]) for k in data] # Tiempos apertura para el frontend si lo necesita
+        timestamps = [int(k[0]) for k in data] # Tiempo de apertura en ms
 
         _cache[cache_key] = {"value": {"prices": history, "times": timestamps}, "timestamp": current_time}
         return _cache[cache_key]["value"]
 
     except Exception as e:
         print(f"[Aviso] Error Binance Kline ({interval}): {e}")
-        # Fallback de caché vieja o simulación
         old_data = _cache.get(cache_key, {}).get("value")
         if old_data:
             return old_data
 
         current = get_current_price()
         history = []
-        for _ in range(limit):
+        times = []
+        now = int(time.time() * 1000)
+        ms_per_interval = {"15m": 900000, "1h": 3600000, "4h": 14400000, "1d": 86400000}.get(interval, 3600000)
+
+        for i in range(limit):
             history.insert(0, current)
+            times.insert(0, now - (i * ms_per_interval))
             current = current * (1 + random.uniform(-0.002, 0.002))
-        return {"prices": history, "times": []}
+        return {"prices": history, "times": times}
 
 def calculate_features(prices):
-    """
-    Features más avanzadas para mejor predicción y análisis de tendencia.
-    """
     if len(prices) < 10:
         return 0.0, 0.0, prices[-1], prices[-1], 0.0
 
@@ -90,7 +86,6 @@ def calculate_features(prices):
     momentum = ((recent[-1] - recent[0]) / recent[0]) * 100
     older_momentum = ((older[-1] - older[0]) / older[0]) * 100
 
-    # Aceleración: si el momentum actual es mayor que el anterior
     acceleration = momentum - older_momentum
 
     changes = [(prices[i] - prices[i-1])/prices[i-1] for i in range(1, len(prices))]
@@ -111,13 +106,3 @@ def determine_market_state(sma_corta, sma_media, momentum, acceleration):
 def get_simulated_volume(volatility):
     base = random.uniform(5000000, 15000000)
     return round(base * (1 + (volatility * 10)), 2)
-
-def get_simulated_sentiment(momentum):
-    base = 50
-    sentiment = base + (momentum * 8) + random.uniform(-5, 5)
-    return round(max(10, min(90, sentiment)), 2)
-
-def get_simulated_onchain(momentum):
-    base_flow = -momentum * 50000
-    flow = base_flow + random.uniform(-100000, 100000)
-    return round(flow, 2)

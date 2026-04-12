@@ -6,11 +6,11 @@
 
 ## 🌟 ¿Qué incluye esta versión V4 Profesional?
 
-*   **📈 Gráficos Multi-rango Binance (BTCUSDT):** Selecciona entre 15m, 1h, 4h o 1d directamente en el panel. El sistema maneja las peticiones con caché inteligente sin saturar.
-*   **🤖 Modo Activo y Modo Observación:** Por defecto el simulador está en "Modo Observación" para que veas cómo piensa la IA. Puedes activar las operaciones automáticas desde el interruptor en la esquina superior derecha.
-*   **🧠 Métricas Reales de IA (Persistentes):** Ahora sabrás de verdad si la IA es buena. El sistema guarda estadísticas aunque lo cierres (`stats.json`), mostrándote el Error Medio (MAE), Porcentaje de Acierto y el estado de Estabilidad.
-*   **📊 Rentabilidad Avanzada:** El simulador te dice cuál es tu precio medio de compra y cuál es la ganancia/pérdida exacta de la posición que tienes abierta, no solo el balance final.
+*   **📈 Gráfico Evolutivo de Alta Claridad:** El gráfico principal ahora es un eje temporal real y continuo. Podrás ver en horas exactas el histórico y cómo se proyecta el futuro en una curva suave y realista. Incluye línea temporal "AHORA".
+*   **🤖 Modo Activo y Modo Observación:** Por defecto el simulador está en "Modo Observación" para que veas cómo piensa la IA sin ensuciar la tabla. Puedes activar el simulador desde el interruptor en la esquina superior derecha.
+*   **🧠 Métricas Reales de IA (Persistentes):** Ahora sabrás de verdad si la IA es buena. El sistema guarda estadísticas aunque lo cierres (`stats.json`), mostrándote el Error Medio (MAE), Porcentaje de Acierto y el estado de Estabilidad en tiempo real.
 *   **🧠 IA Más Robusta y Anti-Ruido:** El motor de predicción usa cálculo de "Aceleración" de mercado, y solo opera si las medias móviles, el momentum, y la proyección futura le dan la razón. Evita operar en mercados laterales o estancados.
+*   **🖥️ Dashboard Limpio y Enocado:** Hemos eliminado paneles inútiles ("Estado de la Cartera"). Ahora toda tu atención va al gráfico principal, a las métricas directas superiores (KPIs) y a la explicación en español natural de por qué la IA toma una decisión.
 
 ---
 
@@ -43,9 +43,9 @@ Solo necesitas tener instalado **Python**.
 
 ## 🔍 Interpretando el Panel
 
-*   **Tarjetas Superiores:** Te resumen el precio, la orden actual, tu precisión y el balance en 1 segundo.
-*   **Selector de Rango:** Alimenta el gráfico con diferentes vistas sin romper las estadísticas de fondo.
-*   **Modo Toggle (Esquina Derecha):** Actívalo si quieres que la tabla de operaciones cobre vida y empiece a acumular/vender BTC.
+*   **Tarjetas Superiores:** Te resumen el precio actual (USD), la señal, tu precisión IA y tu balance en un segundo.
+*   **Gráfico Evolutivo:** La línea amarilla continua es el pasado (Binance) y la línea punteada es hacia dónde la IA cree que el mercado irá (Verde = Sube, Rojo = Baja).
+*   **Análisis Inteligente:** El bloque derecho te traduce toda la matemática de la IA en una sola frase en español que puedes entender ("Mercado lateral", "Caída inminente", etc).
 
 ---
 

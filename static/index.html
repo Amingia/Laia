@@ -7,6 +7,8 @@
     <link rel="stylesheet" href="/static/style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.2.1/dist/chartjs-plugin-annotation.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3/index.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body>
@@ -55,7 +57,7 @@
         </div>
 
         <div class="dashboard">
-            <!-- Gráfico -->
+            <!-- Gráfico (Principal) -->
             <div class="panel main-chart">
                 <div class="panel-header chart-header">
                     <h2><i class="fas fa-chart-line"></i> Gráfico & Predicciones</h2>
@@ -71,14 +73,14 @@
                 </div>
             </div>
 
-            <!-- Panel Lateral IA -->
-            <div class="panel stats-panel">
+            <!-- Panel Lateral IA y Ops -->
+            <div class="panel side-panel">
                 <div class="panel-header">
                     <h2><i class="fas fa-brain"></i> Análisis Inteligente</h2>
                 </div>
 
                 <div class="explanation-box">
-                    <strong>Motivo de decisión:</strong>
+                    <strong>Razón de la Señal:</strong>
                     <p id="decisionExp">Analizando mercado...</p>
                 </div>
 
@@ -91,61 +93,23 @@
                         <span>Racha Actual</span>
                         <strong id="iaStreak">--</strong>
                     </div>
-                    <div class="ia-stat">
-                        <span>Muestras Tot.</span>
-                        <strong id="iaSamples">--</strong>
-                    </div>
-                    <div class="ia-stat">
-                        <span>Pred. 24h</span>
-                        <strong id="iaPred24">--</strong>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Panel Simulador -->
-            <div class="panel simulator-panel">
-                <div class="panel-header" style="display: flex; justify-content: space-between;">
-                    <h2><i class="fas fa-wallet"></i> Estado de la Cartera</h2>
-                    <div>
-                        <span class="badge" id="simModeBadge">Modo Observación</span>
-                    </div>
                 </div>
 
-                <div class="sim-details-grid">
-                    <div class="detail-box">
-                        <span>Posición Abierta (BTC)</span>
-                        <strong id="simBtc">0.000000</strong>
-                    </div>
-                    <div class="detail-box">
-                        <span>Precio Medio Compra</span>
-                        <strong id="simAvgPrice">$ 0.00</strong>
-                    </div>
-                    <div class="detail-box">
-                        <span>Rent. Abierta (PnL)</span>
-                        <strong id="simOpenPnl" class="neutral">$ 0.00 (0.0%)</strong>
-                    </div>
-                    <div class="detail-box">
-                        <span>Ops. Hoy</span>
-                        <strong id="simTradesToday">0</strong>
-                    </div>
+                <div class="panel-header mt-4">
+                    <h3><i class="fas fa-list"></i> Últimas Operaciones</h3>
                 </div>
-
-                <div class="panel-header" style="margin-top: 20px;">
-                    <h3><i class="fas fa-list"></i> Historial de Operaciones</h3>
-                </div>
-                <div class="table-container">
+                <div class="table-container small-table">
                     <table id="historyTable">
                         <thead>
                             <tr>
                                 <th>Hora</th>
-                                <th>Acción</th>
-                                <th>Precio (USD)</th>
-                                <th>Capital Movido</th>
-                                <th>Comisión</th>
+                                <th>Op</th>
+                                <th>Precio</th>
+                                <th>Rent. (PnL)</th>
                             </tr>
                         </thead>
                         <tbody id="historyBody">
-                            <tr><td colspan="5" style="text-align: center; color: #888;">No hay operaciones recientes</td></tr>
+                            <tr><td colspan="4" style="text-align: center; color: #888;">El simulador está esperando...</td></tr>
                         </tbody>
                     </table>
                 </div>
