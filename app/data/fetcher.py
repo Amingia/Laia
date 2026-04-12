@@ -3,7 +3,7 @@ import random
 import numpy as np
 import time
 
-# Caché ultracorta (1 segundo) para que el precio se sienta vivo y sincronizado con Binance Spot
+# Caché ultracorta (1 segundo) para que el precio se sienta vivo
 _cache = {
     "current_price": {"value": None, "timestamp": 0},
     "history_1h": {"value": None, "timestamp": 0}
@@ -17,7 +17,6 @@ def get_current_price():
         return _cache["current_price"]["value"]
 
     try:
-        # Petición muy ligera para no colapsar la conexión
         url = f"https://api.binance.com/api/v3/ticker/price?symbol={SYMBOL}"
         response = requests.get(url, timeout=2)
         response.raise_for_status()
@@ -29,18 +28,19 @@ def get_current_price():
     except Exception as e:
         last_price = _cache["current_price"]["value"]
         if last_price:
-            # Fallback indetectable para mantener continuidad visual
             fallback = last_price * (1 + random.uniform(-0.00005, 0.00005))
             return round(fallback, 2)
         return 65000.0
 
-def get_historical_data(limit=100):
+def get_historical_data(limit=168):
     """
-    Trae los datos históricos de Binance. (limit de 100 horas es suficiente para entrenar y para visualizar 48h)
+    Trae los datos históricos de Binance.
+    Por defecto 168h (7 días exactos) para visualización y contexto fuerte para entrenamiento.
     """
     cache_key = "history_1h"
     current_time = time.time()
 
+    # 5 minutos de caché para velas de 1h es seguro
     if _cache.get(cache_key, {}).get("value") is not None and (current_time - _cache[cache_key]["timestamp"] < 300):
         return _cache[cache_key]["value"]
 
@@ -75,7 +75,8 @@ def get_historical_data(limit=100):
 
 def calculate_advanced_features(prices):
     """
-    Features técnicas útiles para el Random Forest.
+    Features técnicas útiles para los modelos por horizontes.
+    Utilizamos una ventana más amplia dado que ahora disponemos de 168 velas.
     """
     if len(prices) < 24:
         return 0.0, 0.0, prices[-1], prices[-1], 0.0

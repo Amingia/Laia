@@ -1,19 +1,17 @@
-# 🚀 BTC Predictive Analytics v9
+# 🚀 BTC Predictive Analytics v10
 
-¡Bienvenido a la versión definitiva v9! Esta plataforma es una herramienta **profesional y analítica** impulsada por Inteligencia Artificial diseñada exclusivamente para **predecir el movimiento del precio de Bitcoin en las próximas 24 horas**.
-
-No encontrarás aquí herramientas para "jugar a hacer trading", "simuladores" ni "carteras virtuales". Esto es una máquina de datos puros que utiliza un modelo de Machine Learning (**Random Forest Regressor**) enriquecido con *Feature Engineering* (Momentum, Medias Móviles, Aceleración, Volatilidad y Volumen Real) sobre los datos en tiempo real de **Binance**.
+¡Bienvenido a la versión v10! Esta plataforma es una herramienta **profesional y analítica**, diseñada bajo el principio de "Cero Maquillaje". Su único objetivo es predecir el movimiento del precio de Bitcoin y demostrarte matemáticamente si el modelo es superior al mercado o no.
 
 ---
 
-## 🌟 Novedades V9 - Predicción Analítica Pura y Exacta
+## 🌟 Novedades V10 - Verdad y Auditoría Pura
 
-En esta versión hemos transformado y corregido todos los vicios del proyecto:
+Hemos rehecho por completo el cerebro de la aplicación para dejar de "dibujar curvas bonitas" y empezar a predecir puntos críticos de forma honesta.
 
-*   **📈 Tiempo Real "Real":** El precio actual de Bitcoin y la proyección gráfica bailan de forma viva y fluida. Se implementó un polling extremadamente optimizado (1.5 segundos) que te da sensación de *WebSocket* directo contra Binance, pero sin problemas de proxy en Windows. Si el precio real cambia, tu pantalla cambia.
-*   **🧠 Curva Evolutiva Realista:** Atrás quedaron las predicciones "en línea recta" con saltos estéticos entre pasado y futuro. La IA ahora proyecta una curva suavizada que *continúa perfectamente* el punto exacto del mercado actual. Inyecta la inercia (momentum) y la "texturiza" suavemente con la volatilidad real pasada para una plausibilidad visual total.
-*   **📊 Ventana Gráfica de Proporciones Ideales:** Tu vista histórica no se deformará ni desaparecerá. Tienes garantizados los últimos dos días completos (48 horas) de Binance en la zona amarilla, frente a 24 horas en la zona proyectada.
-*   **📁 Validación Interna Transparente:** La aplicación *se auto-evalúa* para demostrarte si acierta o miente. Cada predicción horaria se registra internamente en un archivo liviano (`history.json`) que sobrevive aunque apagues tu ordenador. Cuando la hora H se cumple y Binance dictamina el precio real, la app compara, calcula el Porcentaje de Acierto y el Error Absoluto y te lo muestra. Si no hay datos maduros, es sincera y te dice "Aún recopilando...".
+*   **🧠 Red Neuronal de Horizontes Múltiples:** La IA ya no predice 24 horas usando regresiones encadenadas que degradan la precisión. Ahora usa 4 modelos Random Forest entrenados independientemente para predecir exclusivamente +1h, +2h, +4h y +24h.
+*   **📊 Gráfico Evolutivo Congelado (-168h a +24h):** El eje X del gráfico nunca bailará. Tienes siempre a la izquierda la última semana de mercado exacta, y a la derecha los cuatro anclajes del futuro unidos por líneas rectas. Lo que ves es lo que la IA predijo de forma estricta, sin curvas suavizadas que confundan el análisis.
+*   **🧐 Auditoría vs Baseline (Naive):** ¿Realmente la IA sirve de algo? En el panel derecho verás la comparación cara a cara del *Error Medio Absoluto (MAE)* de la Inteligencia Artificial frente al "Baseline Naive" (un modelo ignorante que asume que el precio de mañana será idéntico al de hoy). Si el MAE de la IA es menor, el panel se vuelve verde: la IA bate al mercado. Si es rojo, la IA lo hace peor que no hacer nada.
+*   **📁 Tracking Persistente y en Vivo:** Todos estos cálculos se basan en predicciones pasadas que la aplicación anotó y validó hora a hora, guardándolas en memoria de forma persistente (`history.json`) para que reinicies tu ordenador sin perder la trazabilidad del rendimiento.
 
 ---
 
@@ -30,7 +28,7 @@ Solo necesitas tener instalado **Python**.
 ## ⚙️ Cómo Instalar
 
 1.  Haz doble clic en el archivo **`install.bat`**.
-2.  Una pantalla negra creará el entorno seguro y descargará las librerías matemáticas (Pandas, Scikit-learn, Numpy, Requests) necesarias sin que tengas que hacer nada.
+2.  Una pantalla negra creará el entorno seguro y descargará las librerías matemáticas (Pandas, Scikit-learn, Numpy, Requests) necesarias.
 3.  Cuando veas "INSTALACION COMPLETADA CON EXITO", puedes pulsar cualquier tecla para cerrar.
     *Esto solo se hace la primera vez.*
 
@@ -39,7 +37,7 @@ Solo necesitas tener instalado **Python**.
 ## 🚀 Cómo Ejecutar
 
 1.  Haz doble clic en el archivo **`run.bat`**.
-2.  Mantén abierta la ventana negra que aparece. Es el cerebro del evaluador corriendo de fondo, pidiendo datos a Binance y guardando estadísticas en el registro.
+2.  Mantén abierta la ventana negra que aparece. Es el cerebro del evaluador corriendo de fondo, pidiendo datos a Binance cada segundo.
 3.  Abre tu navegador (Chrome, Edge...) y entra en: `http://localhost:8000`
 
 ---

@@ -4,95 +4,84 @@ from app.data.fetcher import calculate_advanced_features
 
 class AnalyticsPredictor:
     def __init__(self):
-        # RandomForest con n_estimators moderado y muestras hojas ajustadas para no sobrerreaccionar
-        self.model = RandomForestRegressor(n_estimators=200, max_depth=12, min_samples_leaf=4, random_state=42)
+        # 4 Modelos separados independientes para cada horizonte predictivo (sin acumulación de error recursivo)
+        # Ajustes: más árboles para estabilidad, pero `min_samples_leaf` conservador para evitar overfit.
+        self.model_1h = RandomForestRegressor(n_estimators=100, max_depth=5, min_samples_leaf=2, random_state=41)
+        self.model_2h = RandomForestRegressor(n_estimators=100, max_depth=5, min_samples_leaf=2, random_state=42)
+        self.model_4h = RandomForestRegressor(n_estimators=100, max_depth=5, min_samples_leaf=3, random_state=43)
+        self.model_24h = RandomForestRegressor(n_estimators=200, max_depth=6, min_samples_leaf=4, random_state=44)
         self.is_trained = False
 
     def train(self, prices):
-        if len(prices) < 48:
+        """
+        Entrena los 4 modelos para predecir precios exactamente en su horizonte usando la misma ventana de features (24h atrás)
+        """
+        if len(prices) < 96: # Se requiere suficiente histórico para features + targets a 24h
             return False
 
-        X, y = [], []
+        X, y_1h, y_2h, y_4h, y_24h = [], [], [], [], []
         window = 24
 
-        for i in range(len(prices) - window - 24):
+        for i in range(len(prices) - window - 24): # -24 para garantizar que existe el target a +24h
             window_prices = prices[i:i+window]
             vol, mom, sma_6, sma_24, acc = calculate_advanced_features(window_prices)
 
             features = [
                 window_prices[-1],
-                window_prices[-1] - window_prices[-6], # Diferencia corto plazo
+                window_prices[-1] - window_prices[-6],
                 vol, mom, sma_6, sma_24, acc
             ]
             X.append(features)
-            y.append(prices[i+window])
+
+            # Targets futuros reales para la ventana i
+            y_1h.append(prices[i+window + 0]) # El array prices es 0-indexed, window es longitud, así que index=window es +1 tick (+1h) si ignoramos el salto. En Binance klines el salto es exacto.
+            y_2h.append(prices[i+window + 1])
+            y_4h.append(prices[i+window + 3])
+            y_24h.append(prices[i+window + 23])
 
         if len(X) > 0:
-            self.model.fit(X, y)
+            self.model_1h.fit(X, y_1h)
+            self.model_2h.fit(X, y_2h)
+            self.model_4h.fit(X, y_4h)
+            self.model_24h.fit(X, y_24h)
             self.is_trained = True
             return True
         return False
 
-    def predict_next_24h(self, current_prices):
+    def predict_horizons(self, current_prices):
+        """
+        Devuelve exactamente los 4 puntos de anclaje reales sin maquillar con curvas interpoladas internamente.
+        """
         if not self.is_trained or len(current_prices) < 24:
             return None
 
-        predictions = []
-        upper_bounds = []
-        lower_bounds = []
+        window_data = current_prices[-24:]
+        vol, mom, sma_6, sma_24, acc = calculate_advanced_features(window_data)
 
-        window_data = current_prices[-24:].copy()
+        features = [
+            window_data[-1],
+            window_data[-1] - window_data[-6],
+            vol, mom, sma_6, sma_24, acc
+        ]
 
-        # Volatilidad base del mercado en las últimas 24 horas reales
-        base_volatility, _, _, _, _ = calculate_advanced_features(window_data)
-        vol_factor = max(0.001, base_volatility / 100) # Base mínima de ruido
+        # Puntos crudos, sinceros.
+        pred_1h = self.model_1h.predict([features])[0]
+        pred_2h = self.model_2h.predict([features])[0]
+        pred_4h = self.model_4h.predict([features])[0]
+        pred_24h = self.model_24h.predict([features])[0]
 
-        # El primer punto es literalmente el precio "AHORA" para asegurar un empalme perfecto sin saltos en el gráfico
-        now_price = current_prices[-1]
-        predictions.append(now_price)
-        upper_bounds.append(now_price)
-        lower_bounds.append(now_price)
-
-        last_prediction = now_price
-
-        for i in range(1, 25): # +1h hasta +24h
-            vol, mom, sma_6, sma_24, acc = calculate_advanced_features(window_data)
-
-            features = [
-                window_data[-1],
-                window_data[-1] - window_data[-6],
-                vol, mom, sma_6, sma_24, acc
-            ]
-
-            raw_pred = self.model.predict([features])[0]
-
-            # En vez de un Random Walk ruidoso, usamos "inercia" + "volatilidad histórica" para la textura
-            # Esto evita que la curva parezca un encefalograma plano, pero no la desvirtúa
-            # Simulamos el movimiento con base en la volatilidad real y la desviación de la tendencia
-            trend_direction = 1 if raw_pred > last_prediction else -1
-
-            # La inyección estocástica es muy leve y guiada por la tendencia (no es puro ruido)
-            market_noise = np.random.normal(0, vol_factor * 0.2) * now_price
-            smooth_pred = raw_pred + (market_noise * trend_direction)
-
-            # Banda de Confianza matemática
-            # Crece un 4% de incertidumbre base cada hora + el factor de volatilidad actual
-            uncertainty_multiplier = 1 + (i * 0.04)
-            current_uncertainty = vol_factor * uncertainty_multiplier
-
-            upper = smooth_pred * (1 + current_uncertainty)
-            lower = smooth_pred * (1 - current_uncertainty)
-
-            predictions.append(smooth_pred)
-            upper_bounds.append(upper)
-            lower_bounds.append(lower)
-
-            window_data.pop(0)
-            window_data.append(smooth_pred)
-            last_prediction = smooth_pred
+        # Incertidumbre (Banda) puramente histórica
+        # Para +1h la varianza es la de las últimas 24h.
+        # Para +24h la varianza natural es ~ la volatilidad base multiplicada por la raíz del tiempo.
+        base_vol_pct = max(0.001, vol / 100)
 
         return {
-            "prices": predictions,
-            "upper_bound": upper_bounds,
-            "lower_bound": lower_bounds
+            "p_1h": pred_1h,
+            "b_1h": base_vol_pct * 1.5,
+            "p_2h": pred_2h,
+            "b_2h": base_vol_pct * 2.0,
+            "p_4h": pred_4h,
+            "b_4h": base_vol_pct * 2.5,
+            "p_24h": pred_24h,
+            "b_24h": base_vol_pct * 5.0
         }
