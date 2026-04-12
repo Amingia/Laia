@@ -1,67 +1,63 @@
-def make_decision(current_price, predicted_24h_price, sentiment, onchain_flow, volatility, momentum):
-    """
-    Genera decisión BUY/SELL/HOLD basada en confirmaciones fuertes.
-    Evita operaciones innecesarias si no hay rentabilidad clara.
-    """
+from app.data.fetcher import determine_market_state
 
-    # Calcular cambio porcentual neto esperado (restando comisiones del 0.2% total ida y vuelta)
+def make_decision(current_price, predicted_24h_price, sentiment, onchain_flow, volatility, momentum, sma_c, sma_m, acc):
+    """
+    Motor v4: Explicaciones amigables y soporte para identificar el estado del mercado.
+    """
     expected_change = ((predicted_24h_price - current_price) / current_price) * 100
     net_expected = expected_change - 0.2
 
     score = 0
     confirmations = 0
-    explanations = []
 
-    # 1. Factor Técnico (Predictor) - Exige >1% neto para operar
+    # Determinar contexto general
+    market_state = determine_market_state(sma_c, sma_m, momentum, acc)
+
+    # 1. IA Técnico
     if net_expected > 1.0:
         score += 2
         confirmations += 1
-        explanations.append(f"Predicción IA alcista (+{expected_change:.2f}%).")
+        ia_text = f"La IA proyecta una ganancia clara ({net_expected:.1f}% neto)"
     elif net_expected < -1.0:
         score -= 2
         confirmations += 1
-        explanations.append(f"Predicción IA bajista ({expected_change:.2f}%).")
+        ia_text = f"La IA prevé una caída del mercado ({net_expected:.1f}% neto)"
     else:
-        explanations.append("El margen de ganancia predicho es demasiado bajo (< 1% neto).")
+        ia_text = "La IA no detecta un margen de ganancia suficiente (<1% neto)"
 
-    # 2. Factor Tendencia Corta (Momentum)
-    if momentum > 0.3:
+    # 2. Contexto Corto Plazo
+    if market_state.startswith("Alcista"):
         score += 1
         confirmations += 1
-        explanations.append("Tendencia corta positiva (alcista).")
-    elif momentum < -0.3:
+        ctx_text = f"el mercado está {market_state.lower()}"
+    elif market_state.startswith("Bajista"):
         score -= 1
         confirmations += 1
-        explanations.append("Tendencia corta negativa (bajista).")
+        ctx_text = f"el mercado está {market_state.lower()}"
+    else:
+        ctx_text = "el mercado está lateral (sin fuerza clara)"
 
-    # 3. Factor Sentimiento
-    if sentiment > 65:
-        score += 1
-        explanations.append("Fuerte sentimiento alcista en mercado.")
-    elif sentiment < 35:
-        score -= 1
-        explanations.append("Fuerte sentimiento bajista en mercado.")
+    # 3. Flujo y Sentimiento (Filtro final)
+    vol_text = "con alta volatilidad" if volatility > 2.0 else "con volumen estable"
 
-    # 4. Factor On-chain
-    if onchain_flow < -50000:
-        score += 1
-        explanations.append("Salidas masivas de exchanges (acumulación).")
-    elif onchain_flow > 50000:
-        score -= 1
-        explanations.append("Entradas masivas a exchanges (posible venta).")
-
-    # Decisión final requiere Puntuación Alta (>=3) y Confirmación Múltiple (>=2)
+    # Lógica Final
     if score >= 3 and confirmations >= 2:
         decision = "BUY"
         confianza = min(0.99, 0.7 + (score * 0.05))
-        razon = "COMPRAR porque hay confirmación múltiple: " + " ".join(explanations)
+        if market_state == "Lateral / Indecisión":
+            # Override si es lateral, mejor no operar
+            decision = "HOLD"
+            razon = f"Se recomienda MANTENER. Aunque {ia_text.lower()}, {ctx_text} y es arriesgado comprar ahora."
+        else:
+            razon = f"Se recomienda COMPRAR porque {ctx_text} {vol_text}, y {ia_text.lower()}."
+
     elif score <= -3 and confirmations >= 2:
         decision = "SELL"
         confianza = min(0.99, 0.7 + (abs(score) * 0.05))
-        razon = "VENDER porque hay confirmación múltiple: " + " ".join(explanations)
+        razon = f"Se recomienda VENDER porque {ctx_text}, y {ia_text.lower()}."
     else:
         decision = "HOLD"
         confianza = 0.5
-        razon = "MANTENER (Falta de confirmación clara). " + " ".join(explanations)
+        razon = f"Se recomienda MANTENER. {ia_text}, y además {ctx_text}."
 
-    return decision, confianza, razon
+    return decision, confianza, razon, market_state

@@ -1,18 +1,16 @@
-# 🚀 IA Bitcoin Predictor & Auto-Trader Pro
+# 🚀 IA Bitcoin Predictor & Auto-Trader Pro v4
 
-¡Bienvenido! Este programa es una herramienta profesional impulsada por Inteligencia Artificial que analiza el mercado de Bitcoin en tiempo real **usando datos oficiales de Binance**, realiza predicciones a futuro y simula estrategias de trading automáticas de forma realista en **Dólares (USD)**.
-
-No necesitas ser un experto en programación o en criptomonedas para hacerlo funcionar.
+¡Bienvenido a la versión definitiva v4! Este programa es una herramienta profesional impulsada por Inteligencia Artificial que analiza el mercado de Bitcoin en tiempo real **usando datos oficiales de Binance**, realiza predicciones a futuro y simula estrategias de trading automáticas en **Dólares (USD)**.
 
 ---
 
-## 🌟 ¿Qué incluye esta nueva versión Profesional?
+## 🌟 ¿Qué incluye esta versión V4 Profesional?
 
-*   **📈 Datos de Binance (BTCUSDT):** Las métricas y los modelos de IA se entrenan con datos directos del mayor exchange del mundo, lo que garantiza máxima precisión.
-*   **🧠 IA Mejorada y Anti-Ruido:** El motor de predicción es ahora más exigente. Requiere múltiples confirmaciones técnicas (momentum, tendencia) y un beneficio esperado superior al 1% neto para tomar una decisión.
-*   **⚡ Caché Inteligente:** El servidor maneja inteligentemente las peticiones, permitiéndote ver actualizaciones en vivo sin saturar la red ni sufrir baneos (Errores 429).
-*   **💸 Simulador Realista en USD:** Tu cartera virtual empieza con $1000. Todas las operaciones pagan un 0.1% de comisión simulada y respetan tiempos de "enfriamiento" para evitar comprar y vender por nerviosismo.
-*   **🖥️ Dashboard Premium:** Hemos rediseñado la interfaz con un estilo oscuro e institucional, similar a los portales de trading reales. Muestra tu rentabilidad, acierto de la IA, y gráficos claros.
+*   **📈 Gráficos Multi-rango Binance (BTCUSDT):** Selecciona entre 15m, 1h, 4h o 1d directamente en el panel. El sistema maneja las peticiones con caché inteligente sin saturar.
+*   **🤖 Modo Activo y Modo Observación:** Por defecto el simulador está en "Modo Observación" para que veas cómo piensa la IA. Puedes activar las operaciones automáticas desde el interruptor en la esquina superior derecha.
+*   **🧠 Métricas Reales de IA (Persistentes):** Ahora sabrás de verdad si la IA es buena. El sistema guarda estadísticas aunque lo cierres (`stats.json`), mostrándote el Error Medio (MAE), Porcentaje de Acierto y el estado de Estabilidad.
+*   **📊 Rentabilidad Avanzada:** El simulador te dice cuál es tu precio medio de compra y cuál es la ganancia/pérdida exacta de la posición que tienes abierta, no solo el balance final.
+*   **🧠 IA Más Robusta y Anti-Ruido:** El motor de predicción usa cálculo de "Aceleración" de mercado, y solo opera si las medias móviles, el momentum, y la proyección futura le dan la razón. Evita operar en mercados laterales o estancados.
 
 ---
 
@@ -29,7 +27,7 @@ Solo necesitas tener instalado **Python**.
 ## ⚙️ Cómo Instalar
 
 1.  Haz doble clic en el archivo **`install.bat`**.
-2.  Una pantalla negra hará el trabajo sucio por ti: creará un entorno seguro y descargará las librerías matemáticas necesarias.
+2.  Una pantalla negra creará el entorno seguro y descargará las librerías necesarias sin que tengas que hacer nada.
 3.  Cuando veas "INSTALACION COMPLETADA CON EXITO", puedes pulsar cualquier tecla para cerrar.
     *Esto solo se hace la primera vez.*
 
@@ -40,15 +38,14 @@ Solo necesitas tener instalado **Python**.
 1.  Haz doble clic en el archivo **`run.bat`**.
 2.  Mantén abierta la ventana negra que aparece. Es el motor de la IA corriendo de fondo.
 3.  Abre tu navegador (Chrome, Edge...) y entra en: `http://localhost:8000`
-4.  ¡Disfruta del panel de control de IA!
 
 ---
 
-## 🔍 Entendiendo el Panel
+## 🔍 Interpretando el Panel
 
-*   **Gráfico:** Muestra el precio pasado (amarillo) y lo que la IA predice que pasará en el futuro (verde si sube, rojo si baja).
-*   **Análisis de IA:** Te indica qué debes hacer (COMPRAR, VENDER, MANTENER), cuánta seguridad tiene la máquina y, lo más importante, **por qué** ha tomado esa decisión explicado en español claro.
-*   **Simulador de Trading:** Sigue tu dinero virtual. Si la IA recomienda COMPRAR con fuerza, el simulador gastará dólares reales virtuales para comprar BTC, restando la comisión justa.
+*   **Tarjetas Superiores:** Te resumen el precio, la orden actual, tu precisión y el balance en 1 segundo.
+*   **Selector de Rango:** Alimenta el gráfico con diferentes vistas sin romper las estadísticas de fondo.
+*   **Modo Toggle (Esquina Derecha):** Actívalo si quieres que la tabla de operaciones cobre vida y empiece a acumular/vender BTC.
 
 ---
 
