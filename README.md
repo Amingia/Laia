@@ -1,18 +1,20 @@
-# 🚀 IA Bitcoin Predictor & Auto-Trader
+# 🚀 IA Bitcoin Predictor & Auto-Trader Pro
 
-¡Bienvenido! Este programa es una herramienta completa impulsada por Inteligencia Artificial que analiza el mercado de Bitcoin en tiempo real, realiza predicciones a futuro y simula estrategias de trading automáticas, ¡todo desde un único panel muy fácil de usar!
+¡Bienvenido! Este programa es una herramienta completa impulsada por Inteligencia Artificial que analiza el mercado de Bitcoin en tiempo real, realiza predicciones a futuro y simula estrategias de trading automáticas de forma **altamente realista**.
 
 No necesitas ser un experto en programación o en criptomonedas para hacerlo funcionar. Sigue los pasos a continuación.
 
 ---
 
-## 🌟 Características Principales
+## 🌟 ¿Qué incluye la versión PRO? (Nuevas Características)
 
-*   **📊 Datos en Tiempo Real:** Obtiene el precio real de Bitcoin desde Binance automáticamente cada pocos segundos sin que tengas que recargar la página.
-*   **🤖 Predicción con IA:** Utiliza Machine Learning (Random Forest) para predecir hacia dónde irá el precio en las próximas 24 horas. ¡Y aprende de sus errores para auto-corregirse!
-*   **🧠 Motor de Decisiones:** Analiza los datos del mercado, simula tendencias de noticias/redes sociales y actividad de "ballenas", para decidir si el mejor movimiento ahora es COMPRAR, VENDER o MANTENER.
-*   **💸 Simulador de Trading:** Empieza con 1000€ virtuales. El sistema operará de manera autónoma siguiendo las recomendaciones de la IA, permitiéndote ver cómo le iría a tu dinero real sin tomar riesgos. Todo esto mostrado en un historial de operaciones en vivo.
-*   **💻 Panel Intuitivo (Dashboard):** Una interfaz web clara con gráficos, lista para ver en cualquier navegador.
+Hemos mejorado significativamente la inteligencia y el realismo del simulador:
+
+*   **🧠 IA más Inteligente:** Ahora el modelo de predicción tiene en cuenta no solo el precio, sino también la **volatilidad, la tendencia a corto plazo (momentum)** y un volumen de mercado correlacionado.
+*   **⚖️ Auto-Corrección Dinámica:** Si la IA detecta que se está equivocando por mucho, se auto-corrige de manera agresiva. Si acierta constantemente, estabiliza sus márgenes.
+*   **🛑 Adiós al Sobre-Operar (Ruido):** El motor de decisiones ahora requiere **múltiples confirmaciones** para emitir una señal. Además, no recomendará comprar o vender a menos que prevea una ganancia neta superior al 1%.
+*   **💸 Simulador Realista:** Las operaciones en el simulador ahora incluyen una **comisión del 0.1%** (similar a Binance) por cada compra/venta, y se ha implementado un sistema de **"enfriamiento" de 3 minutos** tras cada operación para evitar un comportamiento errático.
+*   **📊 Dashboard Transparente:** La interfaz ahora te muestra en tiempo real la **Precisión de la IA** (cuántas veces adivina la dirección del mercado) y resalta visualmente en verde o rojo si tu simulador está ganando o perdiendo dinero.
 
 ---
 
@@ -50,11 +52,11 @@ Para ejecutar este programa en tu ordenador con Windows, solo necesitas tener in
 
 El proyecto está dividido en varias partes modulares, por si quieres curiosear en el código:
 
-*   **`app/data/fetcher.py`**: El recolector de datos. Se conecta a internet para ver a cuánto está el Bitcoin en el mercado.
-*   **`app/model/predictor.py`**: El cerebro de IA. Toma el historial de precios y usa algoritmos matemáticos para intentar adivinar el futuro.
-*   **`app/decision/engine.py`**: El tomador de decisiones. Junta la predicción con otros factores simulados para darte el veredicto final.
-*   **`app/simulation/trader.py`**: El contable virtual. Guarda tus 1000€, efectúa las compras y ventas ficticias y calcula tus ganancias o pérdidas.
-*   **`app/main.py`**: El director de orquesta. Conecta todas las piezas y sirve la página web que ves en el navegador.
+*   **`app/data/fetcher.py`**: El recolector de datos y creador de características (calcula volatilidad y momentum).
+*   **`app/model/predictor.py`**: El cerebro de IA con Random Forest y el mecanismo de auto-corrección adaptativa.
+*   **`app/decision/engine.py`**: El tomador de decisiones exigente y anti-ruido.
+*   **`app/simulation/trader.py`**: El contable virtual. Guarda tus 1000€, cobra comisiones realistas y fuerza tiempos de espera.
+*   **`app/main.py`**: El director de orquesta que sirve todo vía API.
 
 ---
 

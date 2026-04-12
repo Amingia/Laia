@@ -1,50 +1,64 @@
-def make_decision(current_price, predicted_24h_price, sentiment, onchain_flow):
-    """Genera decisión BUY/SELL/HOLD basada en los datos actuales y predicciones"""
+def make_decision(current_price, predicted_24h_price, sentiment, onchain_flow, volatility, momentum):
+    """Genera decisión BUY/SELL/HOLD basada en múltiples confirmaciones y evita el ruido"""
 
-    # Calcular cambio porcentual esperado
+    # Calcular cambio porcentual neto esperado (restando comisiones futuras de compra/venta = 0.2%)
     expected_change = ((predicted_24h_price - current_price) / current_price) * 100
+    net_expected = expected_change - 0.2
 
     score = 0
+    confirmations = 0
     explanations = []
 
-    # Factor Técnico (Predicción IA)
-    if expected_change > 0.5:
+    # 1. Factor Técnico / Predictivo (PESO ALTO)
+    if net_expected > 1.0: # Umbral alto para evitar sobre-operar
         score += 2
-        explanations.append(f"La IA predice una subida del {expected_change:.2f}% en 24h.")
-    elif expected_change < -0.5:
+        confirmations += 1
+        explanations.append(f"Predicción IA alcista (+{expected_change:.2f}%).")
+    elif net_expected < -1.0:
         score -= 2
-        explanations.append(f"La IA predice una caída del {abs(expected_change):.2f}% en 24h.")
+        confirmations += 1
+        explanations.append(f"Predicción IA bajista ({expected_change:.2f}%).")
     else:
-        explanations.append("La IA predice que el precio se mantendrá estable.")
+        explanations.append("El margen de ganancia predicho es demasiado bajo (< 1% neto).")
 
-    # Factor Sentimiento
-    if sentiment > 65:
+    # 2. Factor Tendencia Corta (Momentum)
+    if momentum > 0.5:
         score += 1
-        explanations.append("El sentimiento en redes es positivo (codicia).")
-    elif sentiment < 35:
+        confirmations += 1
+        explanations.append("Tendencia a corto plazo positiva.")
+    elif momentum < -0.5:
         score -= 1
-        explanations.append("Hay miedo en el mercado según las redes.")
+        confirmations += 1
+        explanations.append("Tendencia a corto plazo negativa.")
 
-    # Factor On-chain
+    # 3. Factor Sentimiento
+    if sentiment > 60:
+        score += 1
+        explanations.append("Fuerte sentimiento alcista.")
+    elif sentiment < 40:
+        score -= 1
+        explanations.append("Sentimiento bajista predominante.")
+
+    # 4. Factor On-chain
     if onchain_flow < -1000:
         score += 1
-        explanations.append("Ballenas retirando fondos (presión alcista).")
+        explanations.append("Salidas en cadena (compras institucionales).")
     elif onchain_flow > 1000:
         score -= 1
-        explanations.append("Fondos entrando a exchanges (posible venta).")
+        explanations.append("Entradas en cadena (riesgo de volcado).")
 
-    # Decisión final
-    if score >= 2:
+    # Decisión final requiere Puntuación y Confirmación múltiple (evita señales débiles)
+    if score >= 3 and confirmations >= 2:
         decision = "BUY"
-        confianza = min(0.95, 0.6 + (score * 0.05))
-        razon = "COMPRAR: " + " ".join(explanations)
-    elif score <= -2:
+        confianza = min(0.99, 0.7 + (score * 0.05))
+        razon = "COMPRAR porque hay confirmación múltiple: " + " ".join(explanations)
+    elif score <= -3 and confirmations >= 2:
         decision = "SELL"
-        confianza = min(0.95, 0.6 + (abs(score) * 0.05))
-        razon = "VENDER: " + " ".join(explanations)
+        confianza = min(0.99, 0.7 + (abs(score) * 0.05))
+        razon = "VENDER porque hay confirmación múltiple: " + " ".join(explanations)
     else:
         decision = "HOLD"
         confianza = 0.5
-        razon = "MANTENER: " + " ".join(explanations)
+        razon = "MANTENER (Falta de confirmación clara). " + " ".join(explanations)
 
     return decision, confianza, razon

@@ -5,20 +5,28 @@ class TradingSimulator:
         self.btc = 0.0
         self.history = []
         self.last_action_time = None
+        self.fee_rate = 0.001 # 0.1% de comisión por operación
+        self.cooldown_seconds = 180 # 3 minutos de cooldown
+        self.total_fees_paid = 0.0
 
     def process_signal(self, action, price, timestamp):
-        # Evitar operar más de una vez por minuto
-        if self.last_action_time and (timestamp - self.last_action_time).total_seconds() < 60:
+        # Enfriamiento: no operar si no ha pasado el cooldown
+        if self.last_action_time and (timestamp - self.last_action_time).total_seconds() < self.cooldown_seconds:
             return
 
         trade_executed = False
 
-        if action == "BUY" and self.euro > 10:
+        if action == "BUY" and self.euro > 50:
             # Comprar usando el 50% del balance en euros
             amount_to_spend = self.euro * 0.5
-            btc_bought = amount_to_spend / price
+            fee = amount_to_spend * self.fee_rate
+            net_amount = amount_to_spend - fee
+
+            btc_bought = net_amount / price
+
             self.euro -= amount_to_spend
             self.btc += btc_bought
+            self.total_fees_paid += fee
             trade_executed = True
 
             self.history.insert(0, {
@@ -26,29 +34,35 @@ class TradingSimulator:
                 "type": "COMPRA",
                 "price": round(price, 2),
                 "amount_eur": round(amount_to_spend, 2),
-                "btc": round(btc_bought, 6)
+                "btc": round(btc_bought, 6),
+                "fee": round(fee, 2)
             })
 
-        elif action == "SELL" and self.btc > 0.0001:
+        elif action == "SELL" and self.btc > 0.0005: # Mínimo a vender
             # Vender todos los BTC
-            amount_to_receive = self.btc * price
-            self.euro += amount_to_receive
+            gross_receive = self.btc * price
+            fee = gross_receive * self.fee_rate
+            net_receive = gross_receive - fee
+
+            self.euro += net_receive
             btc_sold = self.btc
             self.btc = 0
+            self.total_fees_paid += fee
             trade_executed = True
 
             self.history.insert(0, {
                 "time": timestamp.strftime("%H:%M:%S"),
                 "type": "VENTA",
                 "price": round(price, 2),
-                "amount_eur": round(amount_to_receive, 2),
-                "btc": round(btc_sold, 6)
+                "amount_eur": round(net_receive, 2),
+                "btc": round(btc_sold, 6),
+                "fee": round(fee, 2)
             })
 
         if trade_executed:
             self.last_action_time = timestamp
-            # Mantener solo últimas 10 operaciones
-            if len(self.history) > 10:
+            # Mantener solo últimas 20 operaciones
+            if len(self.history) > 20:
                 self.history.pop()
 
     def get_portfolio_value(self, current_price):
@@ -68,5 +82,6 @@ class TradingSimulator:
             "total_value": round(total_value, 2),
             "profit_loss": round(profit_loss, 2),
             "profit_percent": round(profit_percent, 2),
+            "fees_paid": round(self.total_fees_paid, 2),
             "history": self.history
         }

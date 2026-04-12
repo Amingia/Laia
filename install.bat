@@ -1,4 +1,5 @@
 @echo off
+cd /d %~dp0
 echo ===================================================
 echo     Instalador IA Bitcoin Predictor ^& Trader
 echo ===================================================
@@ -29,7 +30,7 @@ echo.
 echo Activando entorno virtual e instalando dependencias...
 call venv\Scripts\activate.bat
 pip install --upgrade pip
-pip install -r requirements.txt
+pip install -r "%~dp0requirements.txt"
 IF %ERRORLEVEL% NEQ 0 (
     echo [ERROR] Hubo un problema instalando las dependencias.
     pause
