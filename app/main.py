@@ -17,7 +17,13 @@ class AppState:
 
         self.current_price = 0.0
         self.history_data = {"prices": [], "times": []}
-        self.predictions_obj = None
+        # Estructura limpia y estandarizada por defecto (evita Nulls en el frontend)
+        self.predictions_obj = {
+            "p_24h": None,
+            "p_24h_pct": None,
+            "interpolated_prices": [],
+            "interpolated_bounds": []
+        }
         self.predictor = AnalyticsPredictor()
         self.validator = InternalValidator()
         self.is_running = True
@@ -26,11 +32,9 @@ class AppState:
 state = AppState()
 
 async def _attempt_binance_recovery():
-    """Intenta recuperar los datos de Binance si estamos corriendo sobre fallback"""
     print("[Recovery] Intentando reconectar con Binance para sustituir histórico de supervivencia...")
     state.status_msg = "Reconectando con Binance..."
 
-    # Force refresh salta la caché de 5 minutos y ataca a la red
     real_data = get_historical_data(168, force_refresh=True)
 
     if not real_data.get("is_fallback", True):
@@ -43,13 +47,15 @@ async def _attempt_binance_recovery():
         success = state.predictor.train(state.history_data["prices"])
 
         if success:
-            state.predictions_obj = state.predictor.predict_horizons(state.history_data["prices"])
-            state.is_training = False
-            state.status_msg = "Streaming Binance Activo."
-            print("[Éxito] Modelos recalibrados. El sistema opera de nuevo con 100% datos reales.")
+            pred_result = state.predictor.predict_horizons(state.history_data["prices"])
+            if pred_result:
+                state.predictions_obj = pred_result
+                state.is_training = False
+                state.status_msg = "Streaming Binance Activo."
+                print("[Éxito] Modelos recalibrados con 100% datos reales.")
 
 async def background_update_task():
-    print("[INFO] V13 Supervivencia: Descargando histórico (168h)...")
+    print("[INFO] V14 Debug: Descargando histórico (168h)...")
     state.status_msg = "Conectando al mercado..."
 
     initial_data = get_historical_data(168)
@@ -57,7 +63,7 @@ async def background_update_task():
     state.is_fallback = initial_data.get("is_fallback", False)
 
     if state.is_fallback:
-        print("[Alerta] El sistema arranca con HISTÓRICO DE SUPERVIVENCIA. Se intentará recuperación en breve.")
+        print("[Alerta] El sistema arranca con HISTÓRICO DE SUPERVIVENCIA. Se intentará recuperación cada 60s.")
         state.status_msg = "Entrenando IA con datos de supervivencia..."
     else:
         state.status_msg = "Entrenando IA con histórico real..."
@@ -68,31 +74,32 @@ async def background_update_task():
             print("[INFO] Modelos (1h, 2h, 4h, 24h) inicializados.")
             state.current_price = get_current_price()
             pred_result = state.predictor.predict_horizons(state.history_data["prices"])
+
             if pred_result:
                 state.predictions_obj = pred_result
-                # Solo evaluamos contra la realidad si el histórico no es de fallback (para no ensuciar la auditoría con mentiras matemáticas)
                 if not state.is_fallback:
                     state.validator.record_new_prediction(state.current_price, pred_result)
 
                 state.is_training = False
-                state.status_msg = "Usando Datos Temporales (Fallback)" if state.is_fallback else "Streaming Binance Activo"
-                print("[INFO] V13: Arranque del Motor Completado.")
+                state.status_msg = "Modo Supervivencia Activo" if state.is_fallback else "Streaming Binance Activo"
+                print("[INFO] V14: Arranque del Motor Completado.")
             else:
-                state.status_msg = "Error crudo en proyección. Reintentando..."
+                state.status_msg = "Generando proyección..."
         else:
-            state.status_msg = "Error crítico entrenando modelos. Reintentando..."
+            state.status_msg = "Recabando datos suficientes..."
 
-    # Loop de vida
+    # Loop principal (1.5s)
     while state.is_running:
         try:
             state.current_price = get_current_price()
 
             if not state.is_training:
-                # Si el sistema está vivo pero en Fallback, cada 60 iteraciones (~1 minuto) intenta reconectar
+                # Si estamos sobre fallback, intentamos reconectar cada minuto
                 if state.is_fallback and int(time.time()) % 60 == 0:
                     await _attempt_binance_recovery()
                     continue
 
+                # Actualizar histórico en vivo
                 if state.history_data["prices"] and state.history_data["prices"][-1] != state.current_price:
                     state.history_data["prices"].append(state.current_price)
                     state.history_data["times"].append(int(time.time() * 1000))
@@ -101,10 +108,11 @@ async def background_update_task():
                         state.history_data["prices"].pop(0)
                         state.history_data["times"].pop(0)
 
-                # Auditoría solo si no estamos sobre datos de mentira
+                # Evaluar
                 if not state.is_fallback:
                     state.validator.update_actuals(state.current_price)
 
+                # Predecir
                 pred_result = state.predictor.predict_horizons(state.history_data["prices"])
 
                 if pred_result:
@@ -128,9 +136,9 @@ async def background_update_task():
                         state.trend = "Lateral / Indecisión"
 
         except Exception as e:
-            print(f"[ERROR] Loop fondo vivo: {e}")
+            print(f"[ERROR] Loop de vida V14: {e}")
 
-        await asyncio.sleep(1.0)
+        await asyncio.sleep(1.5)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -148,41 +156,21 @@ async def read_index():
 
 @app.get("/api/analysis")
 async def get_state():
-    """El endpoint SIEMPRE devuelve el precio actual. Nunca bloquea la carga de la página (V13 Resiliente)"""
+    """
+    ENDPOINT V14 BLINDADO:
+    Siempre devuelve una estructura JSON estricta. Cero Nones en arrays.
+    El Frontend puede parsearlo sin crashear aunque el backend aún esté calculando.
+    """
 
+    # 1. Datos básicos siempre disponibles
     response = {
-        "precio_actual": state.current_price,
+        "precio_actual": state.current_price if state.current_price else 0.0,
         "is_training": state.is_training,
         "is_fallback": state.is_fallback,
-        "status_msg": state.status_msg
-    }
-
-    # Si la IA aún está calculando o hubo un fallo masivo que impidió llenar los objetos, devolvemos info parcial
-    if state.is_training or not state.predictions_obj:
-        # Enviamos el histórico parcial que haya para que el gráfico no esté en blanco total (solo la línea amarilla se irá dibujando)
-        response["chart_data"] = {
-            "history": {
-                "prices": state.history_data["prices"],
-                "times": state.history_data["times"]
-            },
-            "prediction": None
-        }
-        return response
-
-    p_24h = state.predictions_obj["p_24h"]
-    p_24h_pct = ((p_24h - state.current_price) / state.current_price) * 100
-
-    now = int(time.time() * 1000)
-    hour_ms = 3600000
-
-    pred_prices = state.predictions_obj["interpolated_prices"]
-    pred_bounds = state.predictions_obj["interpolated_bounds"]
-    pred_times = [now + (i * hour_ms) for i in range(1, 25)]
-
-    response.update({
-        "tendencia": state.trend,
-        "prediccion_24h_usd": round(p_24h, 2),
-        "prediccion_24h_pct": round(p_24h_pct, 2),
+        "status_msg": state.status_msg,
+        "tendencia": state.trend if not state.is_training else "Entrenando modelo inicial...",
+        "prediccion_24h_usd": 0.0,
+        "prediccion_24h_pct": 0.0,
         "evaluacion": state.validator.get_metrics(),
         "chart_data": {
             "history": {
@@ -190,12 +178,41 @@ async def get_state():
                 "times": state.history_data["times"]
             },
             "prediction": {
-                "prices": pred_prices,
-                "times": pred_times,
-                "bounds_pct": pred_bounds,
-                "anchor_indices": [0, 1, 3, 23]
+                "prices": [],
+                "bounds_pct": [],
+                "times": [],
+                "anchor_indices": []
             }
         }
-    })
+    }
+
+    # 2. Si ya hay predicción, rellenamos de forma segura
+    if not state.is_training and state.predictions_obj and "p_24h" in state.predictions_obj:
+        p_24h = state.predictions_obj.get("p_24h", 0)
+
+        if state.current_price and state.current_price > 0:
+            p_24h_pct = ((p_24h - state.current_price) / state.current_price) * 100
+        else:
+            p_24h_pct = 0.0
+
+        response["prediccion_24h_usd"] = round(p_24h, 2)
+        response["prediccion_24h_pct"] = round(p_24h_pct, 2)
+
+        now = int(time.time() * 1000)
+        hour_ms = 3600000
+
+        # Recuperamos arrays garantizando su existencia (por si están vacíos)
+        pred_prices = state.predictions_obj.get("interpolated_prices", [])
+        pred_bounds = state.predictions_obj.get("interpolated_bounds", [])
+
+        # Generar timestamps proyectados asumiendo que arranca AHORA y da saltos de 1h
+        pred_times = [now + (i * hour_ms) for i in range(1, len(pred_prices) + 1)]
+
+        response["chart_data"]["prediction"] = {
+            "prices": pred_prices,
+            "bounds_pct": pred_bounds,
+            "times": pred_times,
+            "anchor_indices": [0, 1, 3, 23] # Coordenadas matemáticas fijas de los 4 Nodos Random Forest
+        }
 
     return response

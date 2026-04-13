@@ -75,10 +75,12 @@ function initChart() {
                     padding: 12,
                     callbacks: {
                         title: (context) => {
+                            if (!context || !context[0] || !context[0].parsed) return '';
                             const date = new Date(context[0].parsed.x);
                             return date.toLocaleString('es-ES', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
                         },
                         label: (context) => {
+                            if(!context || !context.dataset || !context.parsed) return '';
                             if(context.dataset.label.includes('Límite') || context.dataset.label.includes('Incertidumbre')) return null;
                             return `${context.dataset.label}: $${context.parsed.y.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}`;
                         }
@@ -124,7 +126,13 @@ function initChart() {
 }
 
 function updateChart(chartData) {
-    if (!chartInstance || !chartData || !chartData.history || chartData.history.prices.length === 0) return;
+    if (!chartInstance) return;
+
+    // Blindaje defensivo total contra campos inexistentes
+    if (!chartData || !chartData.history || !chartData.history.prices || chartData.history.prices.length === 0) {
+        console.log("[App] Sin histórico para dibujar. Ignorando renderizado gráfico.");
+        return;
+    }
 
     const hist = chartData.history;
     const pred = chartData.prediction;
@@ -134,26 +142,35 @@ function updateChart(chartData) {
     const upperData = [];
     const lowerData = [];
 
-    // Cargar Histórico (El backend envía exactamente 168 o lo que haya disponible sin petar)
+    // Cargar Histórico Real
     for (let i = 0; i < hist.prices.length; i++) {
-        realData.push({ x: hist.times[i], y: hist.prices[i] });
+        if(hist.times[i]) {
+            realData.push({ x: hist.times[i], y: hist.prices[i] });
+        }
     }
+
+    if (realData.length === 0) return;
 
     const lastRealPoint = realData[realData.length - 1];
 
-    // Si la IA aún entrena o falló, solo dibujamos histórico
-    if (pred && pred.prices && pred.prices.length > 0) {
+    // Si tenemos predicciones generadas y válidas
+    if (pred && pred.prices && pred.prices.length > 0 && pred.times && pred.times.length > 0) {
 
+        // Empalme visual con el precio actual ("AHORA")
         predData.push({ x: lastRealPoint.x, y: lastRealPoint.y });
         upperData.push({ x: lastRealPoint.x, y: lastRealPoint.y });
         lowerData.push({ x: lastRealPoint.x, y: lastRealPoint.y });
 
+        // Pintado del futuro
         for (let i = 0; i < pred.prices.length; i++) {
             if (i < pred.times.length) {
                 const t = pred.times[i];
-                predData.push({ x: t, y: pred.prices[i] });
-                upperData.push({ x: t, y: pred.upper_bound[i] });
-                lowerData.push({ x: t, y: pred.lower_bound[i] });
+                const p = pred.prices[i];
+                const b_pct = (pred.bounds_pct && pred.bounds_pct[i]) ? pred.bounds_pct[i] : 0.005; // Margen de seguridad default si no llega el % de confianza
+
+                predData.push({ x: t, y: p });
+                upperData.push({ x: t, y: p * (1 + (b_pct)) }); // Nota: en v13 el bounds_pct se devuelve ya fraccional (0.01 = 1%) no sobre 100, arreglamos multiplicador
+                lowerData.push({ x: t, y: p * (1 - (b_pct)) });
             }
         }
 
@@ -179,14 +196,15 @@ function updateChart(chartData) {
             chartInstance.data.customAnchorIndices = pred.anchor_indices.map(i => i + 1);
         }
     } else {
-        // Vaciamos si no hay predicción (warmup)
+        // Modo Warm-up: Sin predicción, limpiamos nodos
         chartInstance.data.customAnchorIndices = [];
     }
 
+    // Configuración del Marco de Tiempo estático
     chartInstance.options.plugins.annotation.annotations.nowLine.xMin = lastRealPoint.x;
     chartInstance.options.plugins.annotation.annotations.nowLine.xMax = lastRealPoint.x;
 
-    // Eje X Fijo: 168h hacia atrás y 25h hacia adelante
+    // Eje X Fijo: Siempre 168h pasado + 25h futuro
     chartInstance.options.scales.x.min = lastRealPoint.x - (168 * 3600 * 1000);
     chartInstance.options.scales.x.max = lastRealPoint.x + (25 * 3600 * 1000);
 
@@ -201,7 +219,13 @@ function updateChart(chartData) {
 function updateAudit(metrics) {
     if (!metrics) return;
 
-    let totalEvals = metrics.total_evals_global || 0;
+    let totalEvals = 0;
+    try {
+        if(metrics["24h"]) totalEvals += metrics["24h"].evals || 0;
+        if(metrics["4h"]) totalEvals += metrics["4h"].evals || 0;
+        if(metrics["2h"]) totalEvals += metrics["2h"].evals || 0;
+        if(metrics["1h"]) totalEvals += metrics["1h"].evals || 0;
+    } catch(e) {}
 
     if (totalEvals === 0) {
         document.getElementById('kpiAccEmpty').style.display = 'flex';
@@ -220,11 +244,11 @@ function updateAudit(metrics) {
         if (data && data.status === "ready") {
             if (data.color === "green") {
                 badge.className = "audit-badge win";
-                badge.innerText = `+ GANA (${data.accuracy}%)`;
+                badge.innerText = `+ IA GANA (${data.accuracy}%)`;
                 mae.innerHTML = `<span class="text-success">${data.mae_ai}%</span> vs ${data.mae_base}%`;
             } else {
                 badge.className = "audit-badge lose";
-                badge.innerText = `- PIERDE (${data.accuracy}%)`;
+                badge.innerText = `- IA PIERDE (${data.accuracy}%)`;
                 mae.innerHTML = `<span class="text-danger">${data.mae_ai}%</span> vs ${data.mae_base}%`;
             }
         } else {
@@ -236,40 +260,44 @@ function updateAudit(metrics) {
 }
 
 function updateUI(data) {
-    // Si hay precio, lo pintamos al instante, sin bloqueos.
-    if (data.precio_actual && data.precio_actual > 0) {
-        document.getElementById('kpiPrice').innerText = `$${data.precio_actual.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-    }
+    if (!data) return;
 
-    // Status visual superior (Supervivencia, Entrenando o Vivo)
-    const statusDiv = document.getElementById('binanceStatus');
-    const banner = document.getElementById('fallbackBanner');
+    const priceEl = document.getElementById('kpiPrice');
     const trendEl = document.getElementById('kpiTrend');
     const pctEl = document.getElementById('kpiPredPct');
     const predEl = document.getElementById('kpiPredPrice');
+    const statusDiv = document.getElementById('binanceStatus');
+    const banner = document.getElementById('fallbackBanner');
 
+    // 1. Mostrar precio si o si (sea training, fallback o real)
+    if (data.precio_actual && data.precio_actual > 0) {
+        priceEl.innerText = `$${data.precio_actual.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    }
+
+    // 2. Banner de Fallback Binance
     if (data.is_fallback) {
-        statusDiv.innerHTML = '<span class="status-indicator error"></span> <span class="text-danger">Aislado: Fallback</span>';
-        banner.style.display = 'flex';
+        statusDiv.innerHTML = '<span class="status-indicator error"></span> <span class="text-danger">Aislado: Fallback Inyectado</span>';
+        if(banner) banner.style.display = 'flex';
     } else {
-        banner.style.display = 'none';
+        if(banner) banner.style.display = 'none';
         if (data.is_training) {
-            statusDiv.innerHTML = '<span class="status-indicator warning"></span> <span>Entrenando Modelos...</span>';
+            statusDiv.innerHTML = '<span class="status-indicator warning"></span> <span class="text-warning">Entrenando IA...</span>';
         } else {
-            statusDiv.innerHTML = '<span class="status-indicator live"></span> <span>Binance 1.5s Streaming</span>';
+            statusDiv.innerHTML = '<span class="status-indicator live"></span> <span class="text-success">Conexión Binance 1.5s</span>';
         }
     }
 
+    // 3. Tarjeta Tendencia
     if (data.is_training) {
-        trendEl.innerText = data.status_msg || "Sincronizando modelos, no cierre la pestaña...";
+        trendEl.innerText = data.status_msg || "Sincronizando y evaluando histórico...";
         trendEl.className = 'text-warning';
         predEl.innerText = '--';
         pctEl.innerText = '--';
         pctEl.className = 'text-muted';
     } else {
-        trendEl.innerText = data.tendencia || "Predicción Emitida";
-        trendEl.className = data.tendencia.includes("Alza") || data.tendencia.includes("Subida") ? 'text-success' :
-                           (data.tendencia.includes("Caída") || data.tendencia.includes("Bajada") ? 'text-danger' : 'text-warning');
+        trendEl.innerText = data.tendencia || "Analizado";
+        trendEl.className = (data.tendencia && (data.tendencia.includes("Alza") || data.tendencia.includes("Subida"))) ? 'text-success' :
+                           (data.tendencia && (data.tendencia.includes("Caída") || data.tendencia.includes("Bajada")) ? 'text-danger' : 'text-warning');
 
         if (data.prediccion_24h_usd) {
             predEl.innerText = `$${data.prediccion_24h_usd.toLocaleString('en-US', {minimumFractionDigits: 0})}`;
@@ -278,13 +306,22 @@ function updateUI(data) {
         }
     }
 
+    // 4. Panel de Auditoría
     if (data.evaluacion) {
-        updateAudit(data.evaluacion);
+        try {
+            updateAudit(data.evaluacion);
+        } catch(e) {
+            console.error("[UI] Error pintando auditoría:", e);
+        }
     }
 
-    // Pintar gráfico pase lo que pase, aunque sea solo con histórico parcial de arranque.
-    if(data.chart_data) {
-        updateChart(data.chart_data);
+    // 5. Pintar gráfico aunque la IA siga pensando
+    if (data.chart_data) {
+        try {
+            updateChart(data.chart_data);
+        } catch(e) {
+            console.error("[Chart] Error pintando Canvas:", e);
+        }
     }
 }
 
@@ -293,17 +330,20 @@ async function fetchData() {
         const response = await fetch('/api/analysis');
         if (response.ok) {
             const data = await response.json();
+            console.log("[Debug] Payload Recibido:", data);
             updateUI(data);
+        } else {
+            console.error("[API] HTTP Error:", response.status);
+            document.getElementById('binanceStatus').innerHTML = '<span class="status-indicator error"></span> <span class="text-danger">HTTP Error '+response.status+'</span>';
         }
     } catch (error) {
-        console.error("Error API:", error);
-        document.getElementById('binanceStatus').innerHTML = '<span class="status-indicator error"></span> <span class="text-danger">Motor Backend Desconectado</span>';
+        console.error("[Network] Fetch fallido:", error);
+        document.getElementById('binanceStatus').innerHTML = '<span class="status-indicator error"></span> <span class="text-danger">Motor Offline</span>';
     }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
     initChart();
-    fetchData();
-    // Polling súper rápido de la UI. El backend le dará lo que tenga listo (Asincronía total V13)
+    fetchData(); // Llamada inmediata
     setInterval(fetchData, 1500);
 });
