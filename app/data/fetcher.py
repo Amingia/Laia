@@ -3,10 +3,10 @@ import random
 import numpy as np
 import time
 
-# Caché ultracorta para precio real de Binance
+# Caché separada: Precio vivo vs Histórico
 _cache = {
     "current_price": {"value": None, "timestamp": 0},
-    "history_1h": {"value": None, "timestamp": 0}
+    "history_1h": {"value": None, "timestamp": 0, "is_fallback": False}
 }
 CACHE_TTL_PRICE = 1
 SYMBOL = "BTCUSDT"
@@ -30,58 +30,66 @@ def get_current_price():
         if last_price:
             fallback = last_price * (1 + random.uniform(-0.00005, 0.00005))
             return round(fallback, 2)
+        # Último recurso extremo si Binance falla en el segundo 0 absoluto de la app
         return 65000.0
 
-def get_historical_data(limit=168):
+def _generate_fallback_history(limit):
+    current = get_current_price()
+    history, times = [], []
+    now = int(time.time() * 1000)
+
+    print("[Advertencia] Generando histórico temporal de supervivencia para evitar bloqueo...")
+    for i in range(limit):
+        history.insert(0, current)
+        times.insert(0, now - (i * 3600000))
+        # Retroceso con ruido gaussiano del 0.2% para simular volatilidad pasada
+        current = current * (1 + random.uniform(-0.002, 0.002))
+
+    return {"prices": history, "times": times, "is_fallback": True}
+
+def get_historical_data(limit=168, force_refresh=False):
     """
-    Obtiene exactamente las últimas X velas.
-    Para el frontend y el entrenamiento usamos 168 (7 días exactos).
+    Intenta 3 veces conectar a Binance.
+    Si falla, devuelve un histórico temporal matemático para que la IA pueda arrancar y la app no muera.
     """
     cache_key = "history_1h"
     current_time = time.time()
 
-    # 5 minutos de caché para velas de 1h
-    if _cache.get(cache_key, {}).get("value") is not None and (current_time - _cache[cache_key]["timestamp"] < 300):
+    if not force_refresh and _cache.get(cache_key, {}).get("value") is not None and (current_time - _cache[cache_key]["timestamp"] < 300):
         return _cache[cache_key]["value"]
 
-    try:
-        url = f"https://api.binance.com/api/v3/klines?symbol={SYMBOL}&interval=1h&limit={limit}"
-        response = requests.get(url, timeout=5)
-        response.raise_for_status()
-        data = response.json()
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            url = f"https://api.binance.com/api/v3/klines?symbol={SYMBOL}&interval=1h&limit={limit}"
+            response = requests.get(url, timeout=3)
+            response.raise_for_status()
+            data = response.json()
 
-        # Validar y limpiar: Solo precios flotantes y timestamps enteros en milisegundos
-        history_prices = []
-        timestamps = []
-        for k in data:
-            try:
-                ts = int(k[0])
-                pr = float(k[4])
-                history_prices.append(pr)
-                timestamps.append(ts)
-            except:
-                continue
+            history_prices = [float(k[4]) for k in data]
+            timestamps = [int(k[0]) for k in data]
 
-        result = {"prices": history_prices, "times": timestamps}
-        _cache[cache_key] = {"value": result, "timestamp": current_time}
-        return result
+            result = {"prices": history_prices, "times": timestamps, "is_fallback": False}
+            _cache[cache_key] = {"value": result, "timestamp": current_time, "is_fallback": False}
 
-    except Exception as e:
-        print(f"[Fetcher] Error bajando Klines Binance: {e}")
-        old_data = _cache.get(cache_key, {}).get("value")
-        if old_data:
-            return old_data
+            if attempt > 0:
+                print(f"[Éxito] Histórico real recuperado de Binance tras {attempt} fallos.")
+            return result
 
-        current = get_current_price()
-        history, times = [], []
-        now = int(time.time() * 1000)
+        except Exception as e:
+            print(f"[Error] Binance Histórico (Intento {attempt+1}/{max_retries}): {e}")
+            time.sleep(1) # Esperar un segundo antes del reintento
 
-        for i in range(limit):
-            history.insert(0, current)
-            times.insert(0, now - (i * 3600000))
-            current = current * (1 + random.uniform(-0.002, 0.002))
+    # Si tras 3 intentos falla: Fallback
+    old_data = _cache.get(cache_key, {}).get("value")
+    # Si ya teníamos datos de fallback o reales cacheados, los usamos
+    if old_data:
+        return old_data
 
-        return {"prices": history, "times": times}
+    # Si no teníamos NADA (arranque en frío caído), inyectamos datos temporales
+    fallback_data = _generate_fallback_history(limit)
+    _cache[cache_key] = {"value": fallback_data, "timestamp": current_time, "is_fallback": True}
+    return fallback_data
 
 def calculate_advanced_features(prices):
     if len(prices) < 24:

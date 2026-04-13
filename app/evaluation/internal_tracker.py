@@ -25,11 +25,11 @@ class InternalValidator:
                 with open(self.filename, "r") as f:
                     data = json.load(f)
                     if "1h" not in data.get("metrics", {}):
-                        print("[Tracker] Estructura antigua detectada. Saneando history.json...")
+                        print("[Tracker V13] Estructura corrupta o anticuada detectada. Saneando history.json...")
                         return default
                     return data
             except Exception as e:
-                print(f"[Tracker] Error leyendo history.json: {e}. Creando nuevo.")
+                print(f"[Tracker V13] Error crítico leyendo history.json: {e}. Creando registro virgen.")
                 return default
         return default
 
@@ -38,10 +38,10 @@ class InternalValidator:
             with open(self.filename, "w") as f:
                 json.dump(self.data, f)
         except Exception as e:
-            print(f"[Tracker Error] No se pudo guardar history.json: {e}")
+            print(f"[Tracker V13 Error] Fallo crudo de escritura en disco (history.json): {e}")
 
     def record_new_prediction(self, current_price, predictions_obj):
-        """Graba una predicción si ha pasado más de 1 hora desde la última foto (3500s por seguridad de cron)"""
+        """Graba una predicción matemáticamente limpia y comprobable. Máximo 1 por hora."""
         now = time.time()
         if now - self.last_record_time < 3500:
             return
@@ -60,18 +60,18 @@ class InternalValidator:
         }
 
         self.data["predictions"].append(record)
-        # Limite sano para RAM/Disco de 100 horas de historial flotante
         if len(self.data["predictions"]) > 100:
             self.data["predictions"].pop(0)
 
         self.last_record_time = now
         self._save_data()
-        print(f"[Auditoría] Snapshot de predicción guardada en log. {len(self.data['predictions'])} registros evaluándose.")
+        print(f"[Auditoría IA] Evaluando nuevo tramo analítico. Hay {len(self.data['predictions'])} proyecciones en memoria.")
 
     def _evaluate_horizon(self, record, current_price, target_key, real_key, metrics_key):
         if record[real_key] is None:
             record[real_key] = round(current_price, 2)
 
+            # Direccionalidad pura: Si la IA dice SUBIR y el precio real SUBE -> OK
             pred_diff = record[target_key] - record["current_price"]
             real_diff = current_price - record["current_price"]
 
@@ -85,12 +85,11 @@ class InternalValidator:
             self.data["metrics"][metrics_key]["mae_base"] += error_base
             self.data["metrics"][metrics_key]["evals"] += 1
 
-            print(f"[Auditoría] Horizonte +{metrics_key} maduró. IA vs Base: {error_ai:.2f}% | {error_base:.2f}%")
+            print(f"[Auditoría IA] Horizonte {metrics_key} resuelto. Error Algoritmo: {error_ai:.2f}% | Error Mercado Estático: {error_base:.2f}%")
             return True
         return False
 
     def update_actuals(self, current_price):
-        """Dispara evaluación si los timestamps han madurado (+1, +2, +4, +24)"""
         now = time.time()
         modified = False
 
