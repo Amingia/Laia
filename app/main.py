@@ -3,7 +3,6 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import asyncio
 import time
-import sys
 import traceback
 from contextlib import asynccontextmanager
 
@@ -35,7 +34,7 @@ class AppState:
 state = AppState()
 
 async def execute_warmup():
-    print("[V15] INICIANDO SECUENCIA WARM-UP (Max 5s)...")
+    print("[V16] INICIANDO SECUENCIA WARM-UP (Max 5s)...")
     state.status_msg = "Descargando histórico de Binance (168h)..."
 
     initial_data = get_historical_data(168)
@@ -43,7 +42,7 @@ async def execute_warmup():
     state.is_fallback = initial_data.get("is_fallback", False)
 
     if state.is_fallback:
-        print("[V15 ALERTA] Fallo masivo en Binance. Usando histórico matemático de supervivencia.")
+        print("[V16 ALERTA] Fallo en Binance. Usando histórico de supervivencia.")
         state.status_msg = "Entrenando IA con datos de supervivencia..."
     else:
         state.status_msg = "Entrenando redes neuronales (1h, 2h, 4h, 24h)..."
@@ -51,7 +50,6 @@ async def execute_warmup():
     if state.history_data["prices"]:
         success = state.predictor.train(state.history_data["prices"])
         if success:
-            print("[V15] Modelos entrenados correctamente.")
             state.status_msg = "Generando proyecciones iniciales..."
 
             state.current_price = get_current_price()
@@ -61,23 +59,19 @@ async def execute_warmup():
                 state.predictions_obj = pred_result
                 if not state.is_fallback:
                     state.validator.record_new_prediction(state.current_price, pred_result)
-                print("[V15] Proyección lista.")
             else:
-                print("[V15 ERROR] El modelo falló al predecir. Arrancando sin predicciones.")
+                print("[V16 ERROR] El modelo falló al predecir. Arrancando en ciego.")
         else:
-            print("[V15 ERROR] Entrenamientos fallidos por falta de datos. Arrancando solo con gráfico.")
-    else:
-        print("[V15 FATAL] No se pudo obtener histórico de ninguna manera. Arrancando en vacío total.")
+            print("[V16 ERROR] Entrenamientos fallidos. Arrancando solo con gráfico.")
 
 async def _attempt_binance_recovery():
-    print("[V15 Recovery] Intentando reconectar con Binance para sanear histórico...")
-    state.status_msg = "Intentando salir del Modo Supervivencia..."
+    print("[V16 Recovery] Intentando reconectar con Binance para sanear histórico...")
+    state.status_msg = "Intentando recuperar conexión a Binance..."
 
-    # Intento agresivo bloqueante leve
     real_data = get_historical_data(168, force_refresh=True)
 
     if not real_data.get("is_fallback", True):
-        print("[V15 ÉXITO] Binance responde. Saneando la memoria de la IA...")
+        print("[V16 ÉXITO] Binance responde. Saneando la memoria de la IA...")
         state.is_fallback = False
         state.is_training = True
         state.status_msg = "Re-entrenando modelos con datos reales de Binance..."
@@ -90,35 +84,29 @@ async def _attempt_binance_recovery():
             if pred:
                 state.predictions_obj = pred
                 state.is_training = False
-                state.status_msg = "Streaming Binance Estable"
-                print("[V15 ÉXITO] IA recalibrada y recuperada del modo supervivencia.")
+                state.status_msg = "Streaming Binance Activo"
+                print("[V16 ÉXITO] IA recalibrada.")
 
 async def background_update_task():
     try:
-        # Timeout Asesino de 5 Segundos
         await asyncio.wait_for(execute_warmup(), timeout=5.0)
     except asyncio.TimeoutError:
-        print("[V15 CRÍTICO] TIMEOUT ALCANZADO (5s). Abortando Warm-up limpio y forzando arranque degradado.")
-        state.status_msg = "Timeout de conexión. Arrancando en modo degradado."
+        print("[V16 CRÍTICO] TIMEOUT WARM-UP ALCANZADO (5s). Forzando arranque degradado.")
+        state.status_msg = "Timeout de red. Arrancando en modo degradado."
 
-        # Inyectar emergencia absoluta si todo petó
         if not state.history_data["prices"]:
-            print("[V15 CRÍTICO] Inyectando datos de emergencia absoluta para evitar pantalla blanca.")
             from app.data.fetcher import _generate_fallback_history
             state.history_data = _generate_fallback_history(168)
             state.is_fallback = True
 
-        # Entrenar por las malas con lo que haya
         state.predictor.train(state.history_data["prices"])
         pred = state.predictor.predict_horizons(state.history_data["prices"])
         if pred: state.predictions_obj = pred
 
     except Exception as e:
-        print(f"[V15 ERROR FATAL EN WARM-UP] {e}")
-        traceback.print_exc()
+        print(f"[V16 ERROR FATAL WARM-UP] {e}")
 
-    # Pase lo que pase en el warm-up, DESBLOQUEAMOS LA API AQUI OBLIGATORIAMENTE
-    print("[V15] API DESBLOQUEADA: is_training=False, is_ready=True")
+    # Forzar el desbloqueo absoluto de la API para el frontend
     state.is_training = False
     state.is_ready = True
     if state.is_fallback:
@@ -126,22 +114,21 @@ async def background_update_task():
     else:
         state.status_msg = "Analizando mercado en tiempo real..."
 
-    # Loop Infinito de Refresco
     while state.is_running:
         if state.is_ready:
             try:
-                # 1. Recuperar Conexión si estamos en Fallback (1 vez por minuto)
+                # 1. Intentar recuperación en background (silenciosa)
                 if state.is_fallback and int(time.time()) % 60 == 0:
                     await _attempt_binance_recovery()
                     await asyncio.sleep(1.0)
                     continue
 
-                # 2. Precio en vivo
+                # 2. Precio Vivo
                 new_price = get_current_price()
                 if new_price and new_price > 0:
                     state.current_price = new_price
 
-                    # 3. Empalme histórico
+                    # 3. Concatenación de histórico suave
                     if not state.history_data["prices"] or state.history_data["prices"][-1] != new_price:
                         state.history_data["prices"].append(new_price)
                         state.history_data["times"].append(int(time.time() * 1000))
@@ -150,11 +137,11 @@ async def background_update_task():
                             state.history_data["prices"].pop(0)
                             state.history_data["times"].pop(0)
 
-                    # 4. Auditoría (Solo si no hay datos falsos corriendo)
+                    # 4. Auditoría Asíncrona (A las +1h, +2h, +4h, +24h)
                     if not state.is_fallback:
                         state.validator.update_actuals(state.current_price)
 
-                    # 5. Predecir
+                    # 5. Predicción
                     pred_result = state.predictor.predict_horizons(state.history_data["prices"])
 
                     if pred_result:
@@ -177,7 +164,7 @@ async def background_update_task():
                                 state.trend = "Lateral / Indecisión"
 
             except Exception as e:
-                print(f"[V15 ERROR LOOP FONDO] {e}")
+                print(f"[V16 ERROR LOOP FONDO] {e}")
 
         await asyncio.sleep(1.5)
 
@@ -198,10 +185,8 @@ async def read_index():
 @app.get("/api/analysis")
 async def get_state():
     """
-    ENDPOINT V15 ANTI-BLOQUEO:
-    Si la app acaba de arrancar y el warmup no termina, devuelve is_training=True
-    y el Frontend pinta un estado degradado temporal, pero no se congela en blanco.
-    Si todo está bien, devuelve la estructura exacta que ChartJS espera.
+    ENDPOINT V16 BLINDADO TOTALMENTE:
+    Estructura robusta 100%. Frontend lo parseará en trozos aislados (try/catch).
     """
 
     response = {
@@ -227,6 +212,7 @@ async def get_state():
         }
     }
 
+    # Relleno predictivo asíncrono
     if not state.is_training and state.predictions_obj and "p_24h" in state.predictions_obj:
         p_24h = state.predictions_obj.get("p_24h")
         if p_24h and state.current_price > 0:

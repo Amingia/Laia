@@ -1,7 +1,7 @@
 @echo off
 cd /d %~dp0
 echo ===================================================
-echo     Instalador BTC Predictive Analytics v12
+echo     Instalador BTC Predictive Analytics v16
 echo ===================================================
 echo.
 
