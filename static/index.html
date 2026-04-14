@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BTC Predictive Analytics v14 (Resiliente)</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <title>BTC Predictive Analytics v15</title>
+    <link rel="stylesheet" href="/static/style.css?v=15">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.2.1/dist/chartjs-plugin-annotation.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3/index.min.js"></script>
@@ -16,7 +16,7 @@
         <div class="nav-brand">
             <i class="fab fa-bitcoin" style="color: #f7931a; font-size: 1.8rem;"></i>
             <span>BTC Predictive Analytics</span>
-            <small class="version-tag">V14 Saneada</small>
+            <small class="version-tag">V15 Anti-Bloqueo</small>
         </div>
         <div class="nav-controls">
             <div class="nav-status" id="binanceStatus">
@@ -26,28 +26,25 @@
         </div>
     </div>
 
-    <!-- Banner de Advertencia de Supervivencia (V14) -->
+    <!-- Banner de Advertencia de Supervivencia (V15) -->
     <div class="fallback-banner" id="fallbackBanner" style="display: none;">
         <i class="fas fa-exclamation-triangle"></i>
-        <span><strong>MODO DE EMERGENCIA ACTIVO:</strong> Binance Spot ha rechazado la conexión inicial (TimeOut/Error 429). Se ha inyectado un histórico simulado para no interrumpir la visualización ni colapsar el sistema. El backend intentará conectarse con el mercado real de forma silenciosa cada 60 segundos.</span>
+        <span><strong>MODO DE EMERGENCIA DEGRADADO:</strong> Binance Spot ha rechazado la conexión inicial (Timeout de 5s o Error 429). Se ha inyectado un histórico simulado para no interrumpir la visualización ni colapsar el sistema. El backend intentará conectarse con el mercado real de forma silenciosa cada minuto.</span>
     </div>
 
     <div class="container">
-        <!-- KPIs Analíticos Puros -->
         <div class="kpi-row">
-            <!-- Precio en Vivo -->
             <div class="kpi-card live-price-card">
-                <span class="label">Precio BTC/USDT (Tiempo Real)</span>
+                <span class="label">Precio BTC/USDT (En Vivo)</span>
                 <div class="price-container">
-                    <h2 id="kpiPrice">Conectando...</h2>
-                    <span class="pulsing-dot"></span>
+                    <h2 id="kpiPrice">...</h2>
+                    <span class="pulsing-dot" id="pricePulse" style="display: none;"></span>
                 </div>
             </div>
 
-            <!-- Proyección 24h -->
             <div class="kpi-card projection-card">
                 <span class="label">Proyección de Cierre a +24h</span>
-                <h3 id="kpiTrend" class="text-warning">Iniciando análisis...</h3>
+                <h3 id="kpiTrend" class="text-warning">Cargando motor analítico...</h3>
                 <div class="metric-group">
                     <div class="metric">
                         <span class="metric-title">Objetivo Esperado</span>
@@ -60,7 +57,6 @@
                 </div>
             </div>
 
-            <!-- Auditoría IA vs Baseline Desglosada -->
             <div class="kpi-card accuracy-card highlight-border" id="auditCard">
                 <span class="label">Auditoría Transparente (IA vs Inercia)</span>
                 <div class="audit-grid" id="kpiAccData" style="display: none;">
@@ -99,7 +95,7 @@
                     <h2><i class="fas fa-chart-line"></i> Evolución y Predicción Interpolada (7 Días)</h2>
                     <div class="legend-info">
                         <span class="legend-item"><span class="color-box real"></span>Histórico Real</span>
-                        <span class="legend-item"><span class="color-box pred"></span>IA (Nodos Ancla Destacados)</span>
+                        <span class="legend-item"><span class="color-box pred"></span>IA (Nodos Ancla)</span>
                         <span class="legend-item"><span class="color-box band"></span>Incertidumbre Volátil</span>
                     </div>
                 </div>
@@ -107,11 +103,12 @@
                     <canvas id="btcChart"></canvas>
                 </div>
                 <div class="chart-footer">
-                    <p><i class="fas fa-check-circle"></i> <strong>V14 Anti-Colapso:</strong> Si Binance rechaza la conexión, verás un histórico de simulación que te permitirá usar la interfaz hasta que la red se recupere. Durante los primeros segundos de arranque (fase de entrenamiento de IA) el gráfico se pinta parcialmente de inmediato, sin dejar bloqueado el navegador.</p>
+                    <p><i class="fas fa-check-circle"></i> <strong>V15 Zero-Wait:</strong> Gráfico ininterrumpido. La app pinta inmediatamente todo lo que el backend tenga disponible, priorizando que siempre haya información útil sobre pantalla. Si el historial real se cae, el sistema te lo notificará sin romperte la vista.</p>
                 </div>
             </div>
         </div>
     </div>
-    <script src="/static/app.js"></script>
+    <!-- Querystring obligatoria para matar la caché de app.js en el navegador -->
+    <script src="/static/app.js?v=15"></script>
 </body>
 </html>

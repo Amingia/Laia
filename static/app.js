@@ -128,9 +128,9 @@ function initChart() {
 function updateChart(chartData) {
     if (!chartInstance) return;
 
-    // Blindaje defensivo total contra campos inexistentes
+    // Blindaje anti-vacio. No queremos bloquear el frontend, si hay historico (lineas amarillas) lo dibujamos SIEMPRE, haya prediccion o no.
     if (!chartData || !chartData.history || !chartData.history.prices || chartData.history.prices.length === 0) {
-        console.log("[App] Sin histórico para dibujar. Ignorando renderizado gráfico.");
+        console.warn("[V15 Chart] No se ha recibido historico desde el Backend todavía. Esperando...");
         return;
     }
 
@@ -153,7 +153,7 @@ function updateChart(chartData) {
 
     const lastRealPoint = realData[realData.length - 1];
 
-    // Si tenemos predicciones generadas y válidas
+    // Si tenemos predicciones generadas y válidas (es decir, NO ESTAMOS en `is_training`)
     if (pred && pred.prices && pred.prices.length > 0 && pred.times && pred.times.length > 0) {
 
         // Empalme visual con el precio actual ("AHORA")
@@ -169,7 +169,7 @@ function updateChart(chartData) {
                 const b_pct = (pred.bounds_pct && pred.bounds_pct[i]) ? pred.bounds_pct[i] : 0.005; // Margen de seguridad default si no llega el % de confianza
 
                 predData.push({ x: t, y: p });
-                upperData.push({ x: t, y: p * (1 + (b_pct)) }); // Nota: en v13 el bounds_pct se devuelve ya fraccional (0.01 = 1%) no sobre 100, arreglamos multiplicador
+                upperData.push({ x: t, y: p * (1 + (b_pct)) });
                 lowerData.push({ x: t, y: p * (1 - (b_pct)) });
             }
         }
@@ -196,15 +196,15 @@ function updateChart(chartData) {
             chartInstance.data.customAnchorIndices = pred.anchor_indices.map(i => i + 1);
         }
     } else {
-        // Modo Warm-up: Sin predicción, limpiamos nodos
+        // MODO IS_TRAINING o DEGRADADO: Sin predicción. Limpiamos nodos y vaciamos el dataset verde/rojo para pintar solo el amarillo
         chartInstance.data.customAnchorIndices = [];
     }
 
-    // Configuración del Marco de Tiempo estático
+    // Configuración del Marco de Tiempo estático y blindado
     chartInstance.options.plugins.annotation.annotations.nowLine.xMin = lastRealPoint.x;
     chartInstance.options.plugins.annotation.annotations.nowLine.xMax = lastRealPoint.x;
 
-    // Eje X Fijo: Siempre 168h pasado + 25h futuro
+    // Eje X Fijo: Siempre 168h pasado + 25h futuro. Si hay Fallback, se mantendrá inamovible gracias a esta fórmula.
     chartInstance.options.scales.x.min = lastRealPoint.x - (168 * 3600 * 1000);
     chartInstance.options.scales.x.max = lastRealPoint.x + (25 * 3600 * 1000);
 
@@ -244,11 +244,11 @@ function updateAudit(metrics) {
         if (data && data.status === "ready") {
             if (data.color === "green") {
                 badge.className = "audit-badge win";
-                badge.innerText = `+ IA GANA (${data.accuracy}%)`;
+                badge.innerText = `+ GANA (${data.accuracy}%)`;
                 mae.innerHTML = `<span class="text-success">${data.mae_ai}%</span> vs ${data.mae_base}%`;
             } else {
                 badge.className = "audit-badge lose";
-                badge.innerText = `- IA PIERDE (${data.accuracy}%)`;
+                badge.innerText = `- PIERDE (${data.accuracy}%)`;
                 mae.innerHTML = `<span class="text-danger">${data.mae_ai}%</span> vs ${data.mae_base}%`;
             }
         } else {
@@ -268,28 +268,30 @@ function updateUI(data) {
     const predEl = document.getElementById('kpiPredPrice');
     const statusDiv = document.getElementById('binanceStatus');
     const banner = document.getElementById('fallbackBanner');
+    const pulse = document.getElementById('pricePulse');
 
-    // 1. Mostrar precio si o si (sea training, fallback o real)
+    // 1. Mostrar precio en vivo siempre, mitigando el "Cargando..."
     if (data.precio_actual && data.precio_actual > 0) {
         priceEl.innerText = `$${data.precio_actual.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        pulse.style.display = 'block';
     }
 
-    // 2. Banner de Fallback Binance
+    // 2. Banner de Fallback Binance (Modo Supervivencia Extrema)
     if (data.is_fallback) {
-        statusDiv.innerHTML = '<span class="status-indicator error"></span> <span class="text-danger">Aislado: Fallback Inyectado</span>';
+        statusDiv.innerHTML = '<span class="status-indicator error"></span> <span class="text-danger">Binance Caído (Emergencia M-V15)</span>';
         if(banner) banner.style.display = 'flex';
     } else {
         if(banner) banner.style.display = 'none';
         if (data.is_training) {
-            statusDiv.innerHTML = '<span class="status-indicator warning"></span> <span class="text-warning">Entrenando IA...</span>';
+            statusDiv.innerHTML = '<span class="status-indicator warning"></span> <span class="text-warning">Cargando contexto de Binance...</span>';
         } else {
             statusDiv.innerHTML = '<span class="status-indicator live"></span> <span class="text-success">Conexión Binance 1.5s</span>';
         }
     }
 
-    // 3. Tarjeta Tendencia
+    // 3. Tarjeta Tendencia Desacoplada (Nunca bloquear al usuario)
     if (data.is_training) {
-        trendEl.innerText = data.status_msg || "Sincronizando y evaluando histórico...";
+        trendEl.innerText = data.status_msg || "Analizando 168h para entrenar Modelos...";
         trendEl.className = 'text-warning';
         predEl.innerText = '--';
         pctEl.innerText = '--';
@@ -299,28 +301,28 @@ function updateUI(data) {
         trendEl.className = (data.tendencia && (data.tendencia.includes("Alza") || data.tendencia.includes("Subida"))) ? 'text-success' :
                            (data.tendencia && (data.tendencia.includes("Caída") || data.tendencia.includes("Bajada")) ? 'text-danger' : 'text-warning');
 
-        if (data.prediccion_24h_usd) {
+        if (data.prediccion_24h_usd && data.prediccion_24h_usd > 0) {
             predEl.innerText = `$${data.prediccion_24h_usd.toLocaleString('en-US', {minimumFractionDigits: 0})}`;
             pctEl.innerText = `${data.prediccion_24h_pct >= 0 ? '+' : ''}${data.prediccion_24h_pct.toFixed(2)}%`;
             pctEl.className = data.prediccion_24h_pct >= 0 ? 'text-success' : 'text-danger';
         }
     }
 
-    // 4. Panel de Auditoría
+    // 4. Panel de Auditoría (No bloqueante)
     if (data.evaluacion) {
         try {
             updateAudit(data.evaluacion);
         } catch(e) {
-            console.error("[UI] Error pintando auditoría:", e);
+            console.error("[V15 UI] Error pintando auditoría:", e);
         }
     }
 
-    // 5. Pintar gráfico aunque la IA siga pensando
+    // 5. Pintar gráfico pase lo que pase
     if (data.chart_data) {
         try {
             updateChart(data.chart_data);
         } catch(e) {
-            console.error("[Chart] Error pintando Canvas:", e);
+            console.error("[V15 Chart] Error renderizando Canvas:", e);
         }
     }
 }
@@ -330,19 +332,20 @@ async function fetchData() {
         const response = await fetch('/api/analysis');
         if (response.ok) {
             const data = await response.json();
-            console.log("[Debug] Payload Recibido:", data);
+            console.log("[V15 Debug] API Data recibida. is_training:", data.is_training, "| is_fallback:", data.is_fallback);
             updateUI(data);
         } else {
-            console.error("[API] HTTP Error:", response.status);
-            document.getElementById('binanceStatus').innerHTML = '<span class="status-indicator error"></span> <span class="text-danger">HTTP Error '+response.status+'</span>';
+            console.error("[V15 API] HTTP Error:", response.status);
+            document.getElementById('binanceStatus').innerHTML = '<span class="status-indicator error"></span> <span class="text-danger">Backend Error '+response.status+'</span>';
         }
     } catch (error) {
-        console.error("[Network] Fetch fallido:", error);
-        document.getElementById('binanceStatus').innerHTML = '<span class="status-indicator error"></span> <span class="text-danger">Motor Offline</span>';
+        console.error("[V15 Network] Fetch fallido:", error);
+        document.getElementById('binanceStatus').innerHTML = '<span class="status-indicator error"></span> <span class="text-danger">Servidor Fuera de Línea</span>';
     }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    console.log("[V15] Inicializando aplicación Zero-Wait. Desacoplamiento de Módulos activo.");
     initChart();
     fetchData(); // Llamada inmediata
     setInterval(fetchData, 1500);
